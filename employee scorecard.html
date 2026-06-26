@@ -1,4 +1,4 @@
-<!DOCTYPE html>
+﻿<!DOCTYPE html>
 <html lang="en">
 <head>
     <meta charset="UTF-8">
@@ -832,17 +832,17 @@
             "Impact of Loss":           { id: "data-risk-impact",        type: "text" },
             "Willing to Relocate":      { id: "data-risk-relocate",      type: "text" },
             
-            "360 Trend 2025":           { id: "data-360",                type: "text" }, // Handled in syncTrend
-            "360 Trend 2024":           { id: "data-360-trend-2",        type: "text" },
-            "360 Trend 2023":           { id: "data-360-trend-1",        type: "text" },
+            "360 Trend 2025":           { id: "data-360",                type: "score_1dp" }, // Handled in syncTrend
+            "360 Trend 2024":           { id: "data-360-trend-2",        type: "score_1dp" },
+            "360 Trend 2023":           { id: "data-360-trend-1",        type: "score_1dp" },
             
-            "Manager Climate Score FY26-27": { id: "data-climate",       type: "climate_val" }, // Handled in syncTrend
-            "Manager Climate Score FY25-26": { id: "data-climate-trend-2", type: "text" },
-            "Manager Climate Score FY24-25": { id: "data-climate-trend-1", type: "text" },
+            "Manager Climate Score FY26-27": { id: "data-climate",       type: "score_1dp" }, // Handled in syncTrend
+            "Manager Climate Score FY25-26": { id: "data-climate-trend-2", type: "score_1dp" },
+            "Manager Climate Score FY24-25": { id: "data-climate-trend-1", type: "score_1dp" },
             
-            "GPTW Score 2025":          { id: "data-gptw",               type: "text" }, // Handled in syncTrend
-            "GPTW Score 2024":          { id: "data-gptw-trend-2",       type: "text" },
-            "GPTW Score 2023":          { id: "data-gptw-trend-1",       type: "text" },
+            "GPTW Score 2025":          { id: "data-gptw",               type: "score_int" }, // Handled in syncTrend
+            "GPTW Score 2024":          { id: "data-gptw-trend-2",       type: "score_int" },
+            "GPTW Score 2023":          { id: "data-gptw-trend-1",       type: "score_int" },
             
             // Future Readiness
             "Readiness 1 - Timeline":   { id: "data-readiness1-timeline", type: "text" },
@@ -2485,6 +2485,12 @@
                     const cleanVal = val.trim();
                     el.innerText = cleanVal || '-';
                     updateLogo(cleanVal);
+                } else if (cfg.type === "score_1dp") {
+                    const n = parseFloat(val);
+                    el.innerText = (!isNaN(n) && val !== '-' && val !== '') ? n.toFixed(1) : (val || '-');
+                } else if (cfg.type === "score_int") {
+                    const n = parseFloat(val);
+                    el.innerText = (!isNaN(n) && val !== '-' && val !== '') ? String(Math.round(n)) : (val || '-');
                 } else if (cfg.type === "climate_val") {
                     el.innerText = val || '-';
                 } else if (cfg.type === "list") {
@@ -2875,5 +2881,6 @@
     </script>
 </body>
 </html>
+
 
 
