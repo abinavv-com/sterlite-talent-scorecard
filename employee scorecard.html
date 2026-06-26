@@ -148,7 +148,7 @@
         .prog-labels .val.red { color: var(--accent-red); background: #FEF2F2; padding: 2px 6px; border-radius: 4px; font-size: 10px;}
         
         .prog-bg { width: 100%; height: 5px; background: #E2E8F0; border-radius: 3px; overflow: hidden;}
-        .prog-fill { height: 100%; background: var(--primary-dark); border-radius: 3px; transition: width 0.4s ease;}
+        .prog-fill { height: 100%; background: #1E3A5F; border-radius: 3px; transition: width 0.4s ease;}
         .prog-fill.amber { background: var(--accent-amber); }
         .prog-fill.green { background: var(--accent-green); }
         .prog-fill.red { background: var(--accent-red); }
@@ -597,7 +597,7 @@
                             <span>MANAGER CLIMATE</span>
                             <button class="hide-trend-btn" onclick="toggleTrend(this)">HIDE TREND</button>
                         </div>
-                        <span class="val" id="label-climate">(<span id="data-climate">3.2</span>)</span>
+                        <span class="val" id="label-climate"><span id="data-climate">3.2</span></span>
                     </div>
                     <div class="prog-bg"><div class="prog-fill amber" id="bar-climate" style="width: 64%;"></div></div>
                     <div class="trend-container">
@@ -615,7 +615,7 @@
                         </div>
                         <span class="val" style="color: var(--accent-green); font-size: 12px;"><span id="data-gptw">85</span></span>
                     </div>
-                    <div class="prog-bg"><div class="prog-fill" id="bar-gptw" style="width: 85%; background: var(--accent-green);"></div></div>
+                    <div class="prog-bg"><div class="prog-fill" id="bar-gptw" style="width: 85%;"></div></div>
                     <div class="trend-container">
                         <div class="trend-item"><span class="trend-year">2023</span><span class="trend-val" id="data-gptw-trend-1">78</span></div>
                         <div class="trend-item"><span class="trend-year">2024</span><span class="trend-val" id="data-gptw-trend-2">82</span></div>
@@ -2557,14 +2557,6 @@
                 climateBar.style.width  = climatePct + "%";
                 climateBar.className    = "prog-fill";
                 climateLabel.className  = "val";
-
-                if (climateVal >= 4.0) {
-                    climateBar.classList.add("green");
-                } else if (climateVal >= 3.0) {
-                    climateBar.classList.add("amber");
-                } else {
-                    climateBar.classList.add("red");
-                }
                 climateLabel.innerHTML = climateEl.innerText === '-' ? '-' : `(<span id="data-climate">${climateEl.innerText}</span>)`;
             }
 
