@@ -1,0 +1,2735 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Executive Talent Scorecard</title>
+    <!-- Include SheetJS for Excel Export/Import -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/pptxgenjs@3.12.0/dist/pptxgen.bundle.js"></script>
+    <script>
+        window.employeeImageData = window.employeeImageData || {};
+        window.companyLogoData = window.companyLogoData || {};
+    </script>
+    <script src="employee scorecard.assets.js"></script>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap');
+
+        :root {
+            --bg-page: #EAEFF4;
+            --bg-card: #FFFFFF;
+            --primary-dark: #122434;
+            --text-main: #334155;
+            --text-muted: #64748B;
+            --accent-gold: #C09A55;
+            --accent-gold-light: #FDF9F1;
+            --accent-green: #10B981;
+            --accent-green-light: #ECFDF5;
+            --accent-red: #EF4444;
+            --accent-amber: #F59E0B;
+            --accent-amber-light: #FEF3C7;
+            --border-color: #E2E8F0;
+        }
+
+        * { box-sizing: border-box; margin: 0; padding: 0; font-family: 'Inter', sans-serif; }
+        body { background-color: var(--bg-page); padding: 4px 12px 12px 12px; color: var(--text-main); height: 100vh; display: flex; flex-direction: column; overflow: hidden; }
+
+        /* --- Header --- */
+        .header { background-color: var(--bg-card); border-radius: 8px; padding: 10px 20px; display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px; flex-shrink: 0; box-shadow: 0 1px 3px rgba(0,0,0,0.05); }
+        .header-left { display: flex; align-items: center; gap: 15px; }
+        .logo-container { border-right: 1px solid var(--border-color); padding-right: 15px; display: flex; align-items: center; justify-content: center; width: 150px; height: 28px; }
+        .logo-img { max-height: 100%; max-width: 100%; object-fit: contain; }
+        .title { font-size: 20px; font-family: serif; color: var(--primary-dark); }
+        .header-divider { width: 1px; height: 24px; background-color: var(--border-color); margin: 0 5px; }
+        
+        .employee-filter-group { min-width: 220px; position: relative; }
+        .employee-combobox { position: relative; width: 100%; }
+        .employee-select-input { width: 100%; padding: 6px 36px 6px 12px; border-radius: 6px; border: 1px solid var(--border-color); font-size: 13px; font-weight: 600; color: var(--primary-dark); background-color: #F8FAFC; outline: none; }
+        .employee-select-input::placeholder { color: var(--text-muted); font-weight: 500; }
+        .employee-select-input:focus,
+        .employee-combobox.open .employee-select-input { border-color: #2563EB; box-shadow: 0 0 0 2px rgba(37,99,235,0.1); }
+        .employee-combobox-toggle { position: absolute; top: 50%; right: 6px; transform: translateY(-50%); width: 24px; height: 24px; border: none; background: transparent; cursor: pointer; border-radius: 4px; }
+        .employee-combobox-toggle::before { content: ''; display: block; width: 14px; height: 14px; margin: 0 auto; background-image: url(\"data:image/svg+xml;charset=UTF-8,%3csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%2364748B' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3e%3cpolyline points='6 9 12 15 18 9'%3e%3c/polyline%3e%3c/svg%3e\"); background-repeat: no-repeat; background-position: center; background-size: 14px; transition: transform 0.2s ease; }
+        .employee-combobox.open .employee-combobox-toggle::before { transform: rotate(180deg); }
+        .employee-combobox-menu { position: absolute; top: calc(100% + 6px); left: 0; right: 0; background: #FFFFFF; border: 1px solid var(--border-color); border-radius: 8px; box-shadow: 0 10px 24px rgba(15, 23, 42, 0.12); max-height: 220px; overflow-y: auto; z-index: 20; padding: 4px; }
+        .employee-combobox-menu[hidden] { display: none; }
+        .employee-combobox-option { width: 100%; text-align: left; border: none; background: transparent; color: var(--primary-dark); padding: 8px 10px; border-radius: 6px; font-size: 13px; font-weight: 600; cursor: pointer; }
+        .employee-combobox-option:hover,
+        .employee-combobox-option.active { background: #EFF6FF; color: #1D4ED8; }
+        .employee-combobox-empty { padding: 8px 10px; color: var(--text-muted); font-size: 12px; font-weight: 600; }
+        .employee-select-hidden { display: none; }
+        .header-right { display: flex; align-items: center; gap: 15px; font-size: 12px; font-weight: 600; color: var(--text-muted); }
+        .badge-review { background-color: var(--accent-gold); color: white; padding: 6px 12px; border-radius: 4px; }
+
+        .btn { padding: 6px 12px; border-radius: 4px; font-size: 11px; font-weight: 700; cursor: pointer; border: 1px solid var(--border-color); background: #FFFFFF; color: var(--text-main); transition: all 0.2s ease; text-transform: uppercase; }
+        .btn:hover { background: var(--bg-page); }
+        .btn-primary { background: #10B981; color: white; border-color: #10B981; }
+        .btn-primary:hover { background: #059669; border-color: #059669; }
+
+        /* --- Main Grid Layout --- */
+        .dashboard-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 12px; flex: 1; min-height: 0; }
+        .col { display: flex; flex-direction: column; gap: 12px; height: 100%; min-height: 0; overflow-y: auto; overflow-x: hidden; }
+
+        /* --- Card Basics --- */
+        .card { background-color: var(--bg-card); border-radius: 8px; padding: 12px 16px; box-shadow: 0 1px 3px rgba(0,0,0,0.05); display: flex; flex-direction: column; }
+        .stretch-card { flex: 1; }
+        .compact-card { flex: 0 0 auto; }
+        .card-title { font-size: 12px; text-transform: uppercase; letter-spacing: 0.5px; font-weight: 700; color: var(--text-muted); margin-bottom: 10px; display: flex; align-items: center; gap: 8px; }
+        .card-title::before { content: ''; display: block; width: 3px; height: 14px; background-color: var(--accent-gold); }
+        .section-label { font-size: 10px; font-weight: 700; color: var(--text-muted); text-transform: uppercase; margin: 8px 0 4px 0; letter-spacing: 0.5px; }
+
+        /* --- Column 1: Profile --- */
+        .profile-card { background-color: var(--primary-dark); color: white; border-radius: 8px; padding: 20px 16px; text-align: center; display: flex; flex-direction: column; flex: 1; }
+        .avatar { width: 80px; height: 80px; background-color: #94A3B8; border-radius: 50%; margin: 0 auto 10px; border: 3px solid var(--accent-gold); object-fit: cover; display: block; }
+        .profile-name { font-size: 18px; font-family: serif; margin-bottom: 4px; }
+        .profile-title { font-size: 10px; color: var(--accent-gold); font-weight: 600; margin-bottom: 12px; text-transform: uppercase; }
+        .profile-meta { text-align: left; font-size: 11px; margin-bottom: 10px; }
+        .meta-row { display: flex; justify-content: space-between; align-items: center; padding: 5px 0; border-bottom: 1px solid rgba(255,255,255,0.1); }
+        .meta-row:last-child { border-bottom: none; }
+        .meta-label { color: #94A3B8; }
+        .meta-value { font-weight: 500; text-align: right; }
+
+        .comp-container { display: flex; align-items: center; gap: 8px; }
+        .comp-hidden { letter-spacing: 2px; font-size: 14px; line-height: 1; }
+        
+        .switch-3 { position: relative; display: inline-block; width: 38px; height: 16px; background-color: rgba(255, 255, 255, 0.2); border-radius: 16px; cursor: pointer; transition: .3s; }
+        .switch-3 .slider { position: absolute; height: 12px; width: 12px; left: 2px; bottom: 2px; background-color: white; border-radius: 50%; transition: .3s; }
+        .switch-3.state-1 { background-color: var(--accent-amber); }
+        .switch-3.state-1 .slider { transform: translateX(11px); }
+        .switch-3.state-2 { background-color: var(--accent-green); }
+        .switch-3.state-2 .slider { transform: translateX(22px); }
+
+        .experience-container { display: flex; gap: 15px; margin-top: auto; padding-top: 10px; border-top: 1px solid rgba(255,255,255,0.1); text-align: left; }
+        .exp-column { flex: 1; min-width: 0; }
+        .exp-title { color: var(--accent-gold); font-size: 10px; font-weight: 700; text-transform: uppercase; margin-bottom: 10px; border-bottom: 1px solid rgba(255,255,255,0.1); padding-bottom: 4px; }
+        .exp-list { list-style: none; padding: 0; margin: 0; position: relative; padding-left: 10px; }
+        .exp-list::before { content: ''; position: absolute; left: 3px; top: 5px; bottom: 5px; width: 1px; background: rgba(255,255,255,0.2); }
+        .exp-list li { position: relative; font-size: 10px; color: #FFFFFF; margin-bottom: 8px; font-weight: 500; line-height: 1.3; word-wrap: break-word; }
+        .exp-list li:last-child { margin-bottom: 0; }
+        .exp-list li::before { content: ''; position: absolute; left: -10px; top: 3.5px; width: 5px; height: 5px; border-radius: 50%; background: var(--accent-gold); }
+
+        /* --- Column 2: Compact Talent Profile --- */
+        .gold-box { background-color: var(--accent-gold-light); border: 1px solid rgba(192, 154, 85, 0.3); border-radius: 6px; padding: 8px; text-align: center; }
+        .gold-box span { font-size: 10px; font-weight: 600; color: var(--accent-gold); display: block; margin-top: 2px;}
+        .perf-table { width: 100%; font-size: 11px; border-collapse: collapse; }
+        .perf-table td { border-bottom: 1px solid var(--border-color); padding: 4px 0; }
+        .perf-table tr:last-child td { border-bottom: none; }
+        .perf-val { font-weight: 700; text-align: right; }
+        .bar-wrap { width: 25px; height: 4px; background: #eee; display: inline-block; vertical-align: middle; margin-left: 6px;}
+        .bar-inner { height: 100%; background: var(--accent-gold); transition: width 0.4s ease;}
+        
+        .risk-wrapper { margin-top: auto; padding-top: 8px; }
+        .light-risk-row { display: flex; justify-content: space-between; align-items: center; padding: 4px 0; border-top: 1px dashed var(--border-color); font-size: 11px; }
+        .light-risk-row span:first-child { color: var(--text-main); font-weight: 500; }
+        .pill { padding: 3px 8px; border-radius: 4px; font-weight: 700; font-size: 9px; text-transform: uppercase; display: inline-flex; align-items: center; justify-content: center; white-space: nowrap; min-width: 86px; line-height: 1; }
+        .pill.low { border: 1px solid var(--accent-green); color: var(--accent-green); background-color: var(--accent-green-light); }
+        .pill.high { border: 1px solid var(--accent-red); color: var(--accent-red); background-color: #FEF2F2; }
+        .pill.amber { border: 1px solid var(--accent-amber); color: var(--accent-amber); background-color: var(--accent-amber-light); }
+        .pill.yes { border: 1px solid #3B82F6; color: #3B82F6; background-color: #EFF6FF; }
+        .pill.done { border: 1px solid var(--accent-green); color: var(--accent-green); background-color: var(--accent-green-light); }
+        .pill.inprogress { border: 1px solid var(--accent-amber); color: var(--accent-amber); background-color: var(--accent-amber-light); }
+        .pill.pending { border: 1px solid var(--accent-red); color: var(--accent-red); background-color: #FEF2F2; }
+
+        .progress-row { margin-bottom: 10px; }
+        .progress-row:last-child { margin-bottom: 0; }
+        .prog-labels { display: flex; justify-content: space-between; font-size: 10px; font-weight: 600; margin-bottom: 4px; color: var(--text-muted);}
+        .prog-labels .val { font-size: 13px; font-weight: 700; color: var(--primary-dark);}
+        .prog-labels .val span { font-size: 9px; color: var(--text-muted); font-weight: 400;}
+        .prog-labels .val.amber { color: var(--accent-amber); background: var(--accent-amber-light); padding: 2px 6px; border-radius: 4px; font-size: 10px;}
+        .prog-labels .val.green { color: var(--accent-green); background: var(--accent-green-light); padding: 2px 6px; border-radius: 4px; font-size: 10px;}
+        .prog-labels .val.red { color: var(--accent-red); background: #FEF2F2; padding: 2px 6px; border-radius: 4px; font-size: 10px;}
+        
+        .prog-bg { width: 100%; height: 5px; background: #E2E8F0; border-radius: 3px; overflow: hidden;}
+        .prog-fill { height: 100%; background: var(--primary-dark); border-radius: 3px; transition: width 0.4s ease;}
+        .prog-fill.amber { background: var(--accent-amber); }
+        .prog-fill.green { background: var(--accent-green); }
+        .prog-fill.red { background: var(--accent-red); }
+
+        .trend-container { display: flex; justify-content: space-around; align-items: center; margin-top: 4px; padding-top: 4px; border-top: 1px dashed var(--border-color); width: 100%; }
+        .trend-item { display: flex; flex-direction: column; align-items: center; gap: 2px; }
+        .trend-year { font-size: 8px; font-weight: 600; color: var(--text-muted); }
+        .trend-val { font-size: 11px; font-weight: 700; color: var(--primary-dark); }
+        .hide-trend-btn { background: #FFFFFF; border: 1px solid var(--border-color); color: var(--text-muted); font-size: 8px; font-weight: 700; padding: 2px 6px; border-radius: 4px; cursor: pointer; text-transform: uppercase; }
+
+        .gold-box .trend-container { border-top-color: rgba(192, 154, 85, 0.3); }
+        .gold-box .trend-val { color: var(--accent-gold); }
+        .gold-box .hide-trend-btn { border-color: rgba(192, 154, 85, 0.4); color: var(--accent-gold); }
+
+        /* --- Column 3 & 4 --- */
+        .readiness-box { border-radius: 6px; padding: 8px; margin-bottom: 8px; border: 1px solid; }
+        .readiness-box:last-child { margin-bottom: 0; }
+        .r-title { font-size: 9px; font-weight: 700; margin-bottom: 4px;}
+        .r-role { font-size: 12px; font-weight: 600; color: var(--primary-dark); margin-bottom: 3px;}
+        .r-desc { font-size: 10px; color: var(--text-muted); line-height: 1.4;}
+        .r-amber { background: var(--accent-amber-light); border-color: rgba(245, 158, 11, 0.2); }
+        .r-amber .r-title { color: var(--accent-amber); }
+        .r-green { background: var(--accent-green-light); border-color: rgba(16, 185, 129, 0.2); }
+        .r-green .r-title { color: var(--accent-green); }
+
+        .comp-box { border-radius: 6px; border: 1px solid var(--border-color); padding: 8px 10px; margin-bottom: 10px;}
+        .comp-box.green { border-color: rgba(16, 185, 129, 0.3); background: #FAFAFA;}
+        .comp-title { font-size: 10px; font-weight: 700; display: flex; align-items: center; gap: 5px; margin-bottom: 6px;}
+        .comp-box.green .comp-title { color: var(--accent-green); }
+        .comp-list { list-style: none; padding: 0;}
+        .comp-list li { font-size: 10px; padding: 4px 0; border-bottom: 1px solid var(--border-color); display: flex; align-items: center; gap: 6px;}
+        .comp-list li:last-child { border-bottom: none; padding-bottom: 0;}
+        .comp-list li::before { content: '\2022'; color: var(--text-muted); font-size: 12px;}
+        .comp-box.green .comp-list li::before { color: var(--accent-green); }
+
+        .action-block { margin-bottom: 12px;}
+        .action-block:last-child { margin-bottom: 0; }
+        .action-label { font-size: 9px; font-weight: 700; color: var(--text-muted); text-transform: uppercase; margin-bottom: 5px;}
+        .action-role { font-size: 12px; font-weight: 600; color: var(--primary-dark); margin-bottom: 3px;}
+        .action-table { width: 100%; border-collapse: collapse; font-size: 10px; margin-top: 6px; }
+        .action-table th { text-align: left; padding-bottom: 4px; border-bottom: 1px solid var(--border-color); color: var(--text-muted); font-weight: 600; text-transform: uppercase; font-size: 9px; }
+        .action-table th:nth-child(1) { width: 57%; }
+        .action-table th:nth-child(2) { width: 19%; text-align: center; }
+        .action-table th:nth-child(3) { width: 24%; text-align: center; }
+        .action-table td { padding: 4px 4px; border-bottom: 1px dashed var(--border-color); color: var(--text-muted); vertical-align: middle; }
+        .action-table td:nth-child(1) { padding-left: 0; }
+        .action-table td:nth-child(2), .action-table td:nth-child(3) { text-align: center; }
+        .action-table td:nth-child(2) { white-space: nowrap; }
+        .action-table tr:last-child td { border-bottom: none; }
+        .action-table .td-flex { display: flex; align-items: flex-start; gap: 6px; text-align: left; }
+        .action-table .bullet { color: var(--accent-gold); font-size: 14px; line-height: 1; margin-top: -1px; }
+        .action-remark { font-size: 9px; font-weight: 600; color: var(--text-main); }
+        .action-table.compact-status th:nth-child(1) { width: 76%; }
+        .action-table.compact-status th:nth-child(2) { width: 24%; text-align: center; }
+        .action-table.compact-status td:nth-child(2) { text-align: center; }
+        .action-list { list-style: none; padding: 0; margin-top: 6px;}
+        .action-list li { font-size: 10px; color: var(--text-muted); line-height: 1.4; padding: 4px 0; border-bottom: 1px dashed var(--border-color); display: flex; align-items: flex-start; gap: 6px;}
+        .action-list li:last-child { border-bottom: none; padding-bottom: 0;}
+        .action-list li::before { content: '\2022'; color: var(--accent-gold); font-size: 14px; line-height: 1;}
+
+        .succ-table { width: 100%; border-collapse: collapse; font-size: 11px;}
+        .succ-table th { text-align: left; padding-bottom: 6px; border-bottom: 1px solid var(--border-color); color: var(--text-muted); font-weight: 600; text-transform: uppercase; font-size: 9px;}
+        .succ-table td { padding: 6px 0; border-bottom: 1px solid var(--border-color); font-weight: 500;}
+        .succ-table tr:last-child td { border-bottom: none; }
+        .succ-readiness { background: var(--bg-page); padding: 4px 8px; border-radius: 4px; color: var(--text-muted); font-size: 9px;}
+
+        @media screen and (max-width: 1366px) and (max-height: 768px) {
+            body {
+                padding: 8px;
+            }
+
+            .header {
+                padding: 8px 12px;
+                margin-bottom: 8px;
+            }
+
+            .header-left,
+            .header-right,
+            .dashboard-grid,
+            .col {
+                gap: 8px;
+            }
+
+            .logo-container {
+                padding-right: 10px;
+                width: 125px;
+                height: 22px;
+                justify-content: center;
+            }
+
+            .logo-img {
+                max-height: 100%;
+                max-width: 100%;
+            }
+
+            .title {
+                font-size: 17px;
+                line-height: 1.05;
+            }
+
+            .header-divider {
+                height: 20px;
+            }
+
+            .employee-filter-group {
+                min-width: 190px;
+            }
+
+            .employee-select-input {
+                padding: 5px 28px 5px 10px;
+                font-size: 12px;
+            }
+
+            .employee-combobox-option {
+                font-size: 12px;
+                padding: 7px 9px;
+            }
+
+            .header-right {
+                font-size: 11px;
+            }
+
+            .btn,
+            .badge-review {
+                padding: 5px 10px;
+                font-size: 10px;
+            }
+
+            .card,
+            .profile-card {
+                padding: 10px 12px;
+                border-radius: 7px;
+            }
+
+
+            .card-title {
+                font-size: 11px;
+                margin-bottom: 8px;
+            }
+
+            .section-label {
+                margin: 6px 0 4px 0;
+                font-size: 9px;
+            }
+
+            .avatar {
+                width: 66px;
+                height: 66px;
+                margin-bottom: 8px;
+            }
+
+            .profile-name {
+                font-size: 16px;
+            }
+
+            .profile-title,
+            .profile-meta,
+            .perf-table,
+            .light-risk-row,
+            .succ-table {
+                font-size: 10px;
+            }
+
+            .meta-row {
+                padding: 4px 0;
+            }
+
+            .experience-container {
+                gap: 10px;
+                padding-top: 8px;
+            }
+
+            .exp-title {
+                font-size: 9px;
+                margin-bottom: 8px;
+            }
+
+            .exp-list li,
+            .comp-list li,
+            .action-table,
+            .action-list li,
+            .r-desc {
+                font-size: 9px;
+            }
+
+            .exp-list li {
+                margin-bottom: 6px;
+                line-height: 1.2;
+            }
+
+            .gold-box,
+            .readiness-box,
+            .comp-box {
+                padding: 7px 8px;
+            }
+
+            .gold-box span,
+            .prog-labels,
+            .trend-val,
+            .r-title,
+            .action-label,
+            .succ-readiness {
+                font-size: 8px;
+            }
+
+            .prog-labels .val,
+            .r-role,
+            .action-role {
+                font-size: 11px;
+            }
+
+            .progress-row,
+            .action-block,
+            .comp-box {
+                margin-bottom: 8px;
+            }
+
+            .action-block[style*="border-top"] {
+                margin-top: 10px !important;
+                padding-top: 10px !important;
+            }
+
+            .action-table th,
+            .action-table td,
+            .succ-table th,
+            .succ-table td {
+                padding-top: 3px;
+                padding-bottom: 3px;
+            }
+
+            .pill {
+                min-width: 72px;
+                padding: 2px 7px;
+                font-size: 8px;
+            }
+
+            .trend-container {
+                margin-top: 3px;
+                padding-top: 3px;
+            }
+
+            .hide-trend-btn {
+                font-size: 7px;
+                padding: 2px 5px;
+            }
+        }
+    </style>
+</head>
+<body>
+
+    <header class="header">
+        <div class="header-left">
+            <div class="logo-container">
+                <img id="company-logo" class="logo-img" alt="Logo">
+                <span id="logo-fallback" style="display:none; font-weight: 700; color: #2563EB; font-size: 20px;">Logo</span>
+            </div>
+            <div class="title">Executive Talent Scorecard</div>
+            <div class="header-divider"></div>
+            <div class="employee-filter-group" id="employee-filter-group">
+                <div class="employee-combobox" id="employee-combobox">
+                    <input type="text" id="employee-filter-input" class="employee-select-input" placeholder="Search name..." oninput="handleEmployeeComboboxInput()" onfocus="openEmployeeCombobox(true)" onclick="openEmployeeCombobox(true)" onkeydown="handleEmployeeComboboxKeydown(event)" onblur="scheduleEmployeeComboboxClose()" role="combobox" aria-autocomplete="list" aria-expanded="false" aria-controls="employee-filter-menu" aria-label="Select employee" autocomplete="off">
+                    <button type="button" class="employee-combobox-toggle" onclick="toggleEmployeeCombobox()" aria-label="Show employee suggestions" tabindex="-1"></button>
+                    <div class="employee-combobox-menu" id="employee-filter-menu" role="listbox" hidden></div>
+                </div>
+                <select id="employee-filter" class="employee-select-hidden" onchange="handleEmployeeChange()" aria-hidden="true" tabindex="-1">
+                    <option value="vikram" selected>Vikram Desai</option>
+                </select>
+            </div>
+        </div>
+        
+        <div class="header-right">
+            <button class="btn" onclick="document.getElementById('bulk-upload').click()" title="Upload the manager template with multiple employees">Bulk Upload (Multi-Employee)</button>
+            <input type="file" id="bulk-upload" accept=".xlsx, .xls" style="display: none;" onchange="importBulkExcel(event)">
+            <button class="btn" onclick="document.getElementById('excel-upload').click()" title="Upload a single-employee export">Upload Single</button>
+            <input type="file" id="excel-upload" accept=".xlsx, .xls" style="display: none;" onchange="importExcel(event)">
+            <button class="btn" id="bulk-pdf-btn" onclick="exportBulkPdf()">Bulk Download PDF</button>
+            <button class="btn" id="single-pdf-btn" onclick="exportSelectedPdf()">Download Selected PDF</button>
+            <button class="btn" id="ppt-export-btn" onclick="exportPpt()">Export PPT</button>
+            <button class="btn btn-primary" id="excel-export-btn" onclick="exportExcel()">Export Excel</button>
+            
+            <span style="margin-left: 10px;">EXTRACT DATE: OCT 2024</span>
+            <div class="badge-review">TALENT REVIEW 2025-2026</div>
+        </div>
+    </header>
+
+    <div class="dashboard-grid">
+        
+        <!-- Column 1 -->
+        <div class="col">
+            <div class="profile-card">
+                <img id="employee-avatar" class="avatar" alt="Employee photo">
+                <h2 class="profile-name" id="data-name">Vikram Desai</h2>
+                <div class="profile-title" id="data-title">VP - Optical Networking Solutions</div>
+                
+                <div class="profile-meta">
+                    <div class="meta-row"><span class="meta-label">Business Unit</span><span class="meta-value" id="data-bu">Sterlite</span></div>
+                    <div class="meta-row"><span class="meta-label">Grade</span><span class="meta-value" id="data-grade">VP (Band 4)</span></div>
+                    <div class="meta-row"><span class="meta-label">Manager</span><span class="meta-value" id="data-manager">Sanjay Mehta</span></div>
+                    <div class="meta-row"><span class="meta-label">Location</span><span class="meta-value" id="data-location">Pune, MH</span></div>
+                    <div class="meta-row"><span class="meta-label">Experience in Current Role</span><span class="meta-value" id="data-exp-role">2.1 Yrs</span></div>
+                    <div class="meta-row"><span class="meta-label">Experience in Current Org</span><span class="meta-value" id="data-exp-sterlite">2.1 Yrs</span></div>
+                    <div class="meta-row"><span class="meta-label">Overall Exp</span><span class="meta-value" id="data-exp-overall">14 Yrs</span></div>
+                    <div class="meta-row"><span class="meta-label">Function</span><span class="meta-value" id="data-function">Engineering</span></div>
+                    
+                    <div class="meta-row" id="compensation-row" style="display: flex; flex-direction: column; align-items: stretch; border-bottom: none;">
+                        <div style="display: flex; justify-content: space-between; align-items: center; width: 100%;">
+                            <span class="meta-label">Compensation (Cr)</span>
+                            <span class="meta-value comp-container">
+                                <span id="comp-display" class="comp-hidden" data-value="$250K + Equity">********</span>
+                                <div id="comp-switch" class="switch-3" onclick="cycleCompensation()">
+                                    <div class="slider"></div>
+                                </div>
+                            </span>
+                        </div>
+                        
+                        <div id="comp-trend" class="trend-container" style="display: none; border-top: 1px dashed rgba(255,255,255,0.2); margin-top: 8px; padding-top: 8px;">
+                            <div class="trend-item"><span class="trend-year" style="color: #94A3B8;">FY25</span><span class="trend-val" id="data-comp-trend-1" style="color: white;">$210K</span></div>
+                            <div class="trend-item"><span class="trend-year" style="color: #94A3B8;">FY26</span><span class="trend-val" id="data-comp-trend-2" style="color: white;">$230K</span></div>
+                            <div class="trend-item"><span class="trend-year" style="color: #94A3B8;">FY27</span><span class="trend-val" id="data-comp-trend-3" style="color: white;">$250K</span></div>
+                        </div>
+                    </div>
+                    <div class="meta-row" id="ltip-row" style="display: flex; flex-direction: column; align-items: stretch; border-bottom: none;">
+                        <div style="display: flex; justify-content: space-between; align-items: center; width: 100%;">
+                            <span class="meta-label">Total Unvested LTIP Benefit (Cr)</span>
+                            <span class="meta-value comp-container">
+                                <span id="data-ltip-benefit" class="comp-hidden" data-value="-">********</span>
+                                <div id="ltip-switch" class="switch-3" onclick="cycleLtipBenefit()">
+                                    <div class="slider"></div>
+                                </div>
+                            </span>
+                        </div>
+                    </div>
+                    <div class="meta-row"><span class="meta-label">Last Promotion Date</span><span class="meta-value" id="data-last-promotion-date">-</span></div>
+                </div>
+
+                <div class="experience-container">
+                    <div class="exp-column">
+                        <div class="exp-title">CURRENT EXPERIENCE</div>
+                        <ul class="exp-list" id="data-current-experience">
+                            <li>
+                                Assistant Manager - Production
+                                <span style="display: block; font-size: 8.5px; color: #94A3B8; margin-top: 2px; font-weight: 400;">2022 - Present</span>
+                            </li>
+                            <li>
+                                Manager - SCM
+                                <span style="display: block; font-size: 8.5px; color: #94A3B8; margin-top: 2px; font-weight: 400;">2019 - 2022</span>
+                            </li>
+                            <li>
+                                Assistant Manager - Projects
+                                <span style="display: block; font-size: 8.5px; color: #94A3B8; margin-top: 2px; font-weight: 400;">2017 - 2019</span>
+                            </li>
+                        </ul>
+                    </div>
+                    <div class="exp-column">
+                        <div class="exp-title">PREVIOUS EXPERIENCE</div>
+                        <ul class="exp-list" id="data-previous-experience">
+                            <li>
+                                Enron india-opo
+                                <span style="display: block; font-size: 8.5px; color: #94A3B8; margin-top: 2px; font-weight: 400;">2015 - 2017</span>
+                            </li>
+                            <li>
+                                Gujarat Industries power company limited vadodra
+                                <span style="display: block; font-size: 8.5px; color: #94A3B8; margin-top: 2px; font-weight: 400;">2012 - 2015</span>
+                            </li>
+                            <li>
+                                JSC Kazstroy services
+                                <span style="display: block; font-size: 8.5px; color: #94A3B8; margin-top: 2px; font-weight: 400;">2009 - 2012</span>
+                            </li>
+                            <li>
+                                Nuclear power corporation india limiter
+                                <span style="display: block; font-size: 8.5px; color: #94A3B8; margin-top: 2px; font-weight: 400;">2007 - 2009</span>
+                            </li>
+                        </ul>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Column 2 -->
+        <div class="col">
+            <div class="card stretch-card">
+                <div class="card-title">Talent Profile</div>
+                
+                <div class="gold-box">
+                    <div style="display: flex; justify-content: center; align-items: center; position: relative;">
+                        <div style="font-size: 14px; color: var(--text-main);"><strong>TR RATING: <span id="data-tr">9</span></strong></div>
+                        <button class="hide-trend-btn" style="position: absolute; right: 0;" onclick="toggleTrend(this)">HIDE TREND</button>
+                    </div>
+                    <span id="data-prev-cycle-top-talent">PREVIOUS CYCLE TOP TALENT: NO</span>
+                    <div class="trend-container">
+                        <div class="trend-item"><span class="trend-year">FY24</span><span class="trend-val" id="data-tr-trend-1">8</span></div>
+                        <div class="trend-item"><span class="trend-year">FY25</span><span class="trend-val" id="data-tr-trend-2">8</span></div>
+                        <div class="trend-item"><span class="trend-year">FY26</span><span class="trend-val" id="data-tr-trend-3">9</span></div>
+                    </div>
+                </div>
+
+                <div class="section-label">Performance History</div>
+                <table class="perf-table">
+                    <tr><td>2025-26 (H1)</td><td class="perf-val"><span id="data-perf-1">4.6</span> <div class="bar-wrap"><div class="bar-inner" id="bar-perf-1" style="width: 92%;"></div></div></td></tr>
+                    <tr><td>2024-25 (H2)</td><td class="perf-val"><span id="data-perf-2">4.8</span> <div class="bar-wrap"><div class="bar-inner" id="bar-perf-2" style="width: 96%;"></div></div></td></tr>
+                    <tr><td>2024-25 (H1)</td><td class="perf-val"><span id="data-perf-3">4.3</span> <div class="bar-wrap"><div class="bar-inner" id="bar-perf-3" style="width: 86%;"></div></div></td></tr>
+                </table>
+
+                <div class="risk-wrapper">
+                    <div class="section-label">Retention Risk & Mobility</div>
+                    <div class="light-risk-row" style="border-top: none;">
+                        <span>Risk of Loss</span><span class="pill low" id="data-risk-loss">LOW</span>
+                    </div>
+                    <div class="light-risk-row">
+                        <span>Impact of Loss</span><span class="pill high" id="data-risk-impact">HIGH</span>
+                    </div>
+                    <div class="light-risk-row">
+                        <span>Willing to Relocate</span><span class="pill yes" id="data-risk-relocate">YES</span>
+                    </div>
+                </div>
+            </div>
+
+            <div class="card">
+                <div class="card-title">Leadership Impact</div>
+                
+                <div class="progress-row">
+                    <div class="prog-labels" style="align-items: center;">
+                        <div style="display: flex; align-items: center; gap: 8px;">
+                            <span>360 ASSESSMENT</span>
+                            <button class="hide-trend-btn" onclick="toggleTrend(this)">HIDE TREND</button>
+                        </div>
+                        <span class="val"><span id="data-360">4.7</span><span>/5.0</span></span>
+                    </div>
+                    <div class="prog-bg"><div class="prog-fill" id="bar-360" style="width: 94%;"></div></div>
+                    <div class="trend-container">
+                        <div class="trend-item"><span class="trend-year">2023</span><span class="trend-val" id="data-360-trend-1">4.1</span></div>
+                        <div class="trend-item"><span class="trend-year">2024</span><span class="trend-val" id="data-360-trend-2">4.5</span></div>
+                        <div class="trend-item"><span class="trend-year">2025</span><span class="trend-val" id="data-360-trend-3">4.7</span></div>
+                    </div>
+                </div>
+
+                <div class="progress-row">
+                    <div class="prog-labels" style="align-items: center;">
+                        <div style="display: flex; align-items: center; gap: 8px;">
+                            <span>MANAGER CLIMATE</span>
+                            <button class="hide-trend-btn" onclick="toggleTrend(this)">HIDE TREND</button>
+                        </div>
+                        <span class="val" id="label-climate">(<span id="data-climate">3.2</span>)</span>
+                    </div>
+                    <div class="prog-bg"><div class="prog-fill amber" id="bar-climate" style="width: 64%;"></div></div>
+                    <div class="trend-container">
+                        <div class="trend-item"><span class="trend-year">FY25</span><span class="trend-val" id="data-climate-trend-1">3.0</span></div>
+                        <div class="trend-item"><span class="trend-year">FY26</span><span class="trend-val" id="data-climate-trend-2">3.1</span></div>
+                        <div class="trend-item"><span class="trend-year">FY27</span><span class="trend-val" id="data-climate-trend-3">3.2</span></div>
+                    </div>
+                </div>
+
+                <div class="progress-row">
+                    <div class="prog-labels" style="align-items: center;">
+                        <div style="display: flex; align-items: center; gap: 8px;">
+                            <span>GPTW MANAGER SCORES</span>
+                            <button class="hide-trend-btn" onclick="toggleTrend(this)">HIDE TREND</button>
+                        </div>
+                        <span class="val" style="color: var(--accent-green); font-size: 12px;"><span id="data-gptw">85</span></span>
+                    </div>
+                    <div class="prog-bg"><div class="prog-fill" id="bar-gptw" style="width: 85%; background: var(--accent-green);"></div></div>
+                    <div class="trend-container">
+                        <div class="trend-item"><span class="trend-year">2023</span><span class="trend-val" id="data-gptw-trend-1">78</span></div>
+                        <div class="trend-item"><span class="trend-year">2024</span><span class="trend-val" id="data-gptw-trend-2">82</span></div>
+                        <div class="trend-item"><span class="trend-year">2025</span><span class="trend-val" id="data-gptw-trend-3">85</span></div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Column 3 -->
+        <div class="col">
+            <div class="card" id="future-readiness-card">
+                <div class="card-title">Future Readiness</div>
+                
+                <div class="readiness-box r-amber" id="readiness-box-1">
+                    <div class="r-title" id="data-readiness1-timeline">READY IN 1-2 YEARS</div>
+                    <div class="r-role" id="data-readiness1-role">SVP - Global Optical Biz</div>
+                    <div class="r-desc" id="data-readiness1-desc">Requires exposure to cross-functional global operations.</div>
+                </div>
+                
+                <div class="readiness-box r-green" id="readiness-box-2">
+                    <div class="r-title" id="data-readiness2-timeline">READY NOW</div>
+                    <div class="r-role" id="data-readiness2-role">Head of 5G Strategy</div>
+                    <div class="r-desc" id="data-readiness2-desc">Fully aligned with technical depth and current business goals.</div>
+                </div>
+            </div>
+
+            <div class="card compact-card">
+                <div class="card-title">Competency Profile</div>
+                
+                <div class="comp-box green">
+                    <div class="comp-title">CORE STRENGTHS</div>
+                    <ul class="comp-list" id="data-strengths-list">
+                        <li>Network Architecture Visioning</li>
+                        <li>Large-scale Telecom Bidding</li>
+                        <li>Cross-border Leadership</li>
+                        <li>5G & FTTx Execution</li>
+                        <li>Strategic Vendor Negotiation</li>
+                        <li>P&L Management & Optimization</li>
+                    </ul>
+                </div>
+
+                <div class="comp-box">
+                    <div class="comp-title">DEVELOPMENT AREAS</div>
+                    <ul class="comp-list" id="data-development-list">
+                        <li>Navigating matrix structures</li>
+                        <li>Delegating to regional managers</li>
+                        <li>Public speaking at global summits</li>
+                        <li>Balancing delivery & team burnout</li>
+                        <li>Fostering inclusive team culture</li>
+                        <li>Agile framework adoption</li>
+                    </ul>
+                </div>
+            </div>
+        </div>
+
+        <!-- Column 4 -->
+        <div class="col">
+            <div class="card compact-card">
+                <div class="card-title">Actionable</div>
+                
+                <div class="action-block">
+                    <div class="action-label">Actions Taken</div>
+                    <table class="action-table">
+                        <thead>
+                            <tr>
+                                <th>Actions Taken</th>
+                                <th>Status</th>
+                                <th>Remark</th>
+                            </tr>
+                        </thead>
+                        <tbody id="data-actions-taken-tbody">
+                            <tr>
+                                <td><div class="td-flex"><span class="bullet">&bull;</span><span>Enrolled and completed Executive Communications program.</span></div></td>
+                                <td><span class="pill done">Done</span></td>
+                                <td><span class="action-remark">Certification received</span></td>
+                            </tr>
+                            <tr>
+                                <td><div class="td-flex"><span class="bullet">&bull;</span><span>Shadowed EMEA SVP for 2 weeks to master regional nuances.</span></div></td>
+                                <td><span class="pill done">Done</span></td>
+                                <td><span class="action-remark">Strong SVP feedback</span></td>
+                            </tr>
+                            <tr>
+                                <td><div class="td-flex"><span class="bullet">&bull;</span><span>Mentored two high-potential directors within the division.</span></div></td>
+                                <td><span class="pill pending">Pending</span></td>
+                                <td><span class="action-remark">On track for Q3</span></td>
+                            </tr>
+                            <tr>
+                                <td><div class="td-flex"><span class="bullet">&bull;</span><span>Led cross-functional task force on supply chain optimization.</span></div></td>
+                                <td><span class="pill done">Done</span></td>
+                                <td><span class="action-remark">Reduced costs by 12%</span></td>
+                            </tr>
+                            <tr>
+                                <td><div class="td-flex"><span class="bullet">&bull;</span><span>Initiated quarterly 'skip-level' meetings to address morale.</span></div></td>
+                                <td><span class="pill done">Done</span></td>
+                                <td><span class="action-remark">Morale score +15%</span></td>
+                            </tr>
+                            <tr>
+                                <td><div class="td-flex"><span class="bullet">&bull;</span><span>Spearheaded AI integration in network planning.</span></div></td>
+                                <td><span class="pill pending">Pending</span></td>
+                                <td><span class="action-remark">Pilot phase ongoing</span></td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+
+                <div class="action-block" style="margin-top: 14px; border-top: 1px solid var(--border-color); padding-top: 15px;">
+                    <div class="action-label">Actions Proposed</div>
+                    <table class="action-table compact-status">
+                        <thead>
+                            <tr>
+                                <th>Actions Proposed</th>
+                                <th>Status</th>
+                            </tr>
+                        </thead>
+                        <tbody id="data-actions-proposed-tbody">
+                            <tr>
+                                <td><div class="td-flex"><span class="bullet">&bull;</span><span>Assign to lead upcoming EMEA 5G Fiber deployment strategy.</span></div></td>
+                                <td><span class="pill inprogress">PLANNED</span></td>
+                            </tr>
+                            <tr>
+                                <td><div class="td-flex"><span class="bullet">&bull;</span><span>Present Q2 optical strategy to the executive board.</span></div></td>
+                                <td><span class="pill pending">PENDING</span></td>
+                            </tr>
+                            <tr>
+                                <td><div class="td-flex"><span class="bullet">&bull;</span><span>Focus on regional delegation to improve climate score.</span></div></td>
+                                <td><span class="pill inprogress">RECOMMENDED</span></td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+
+            <div class="card">
+                <div class="card-title">Potential Successors</div>
+                <table class="succ-table">
+                    <thead>
+                        <tr>
+                            <th>Name</th>
+                            <th style="text-align: right;">Readiness</th>
+                        </tr>
+                    </thead>
+                    <tbody id="data-successors-tbody">
+                        <tr>
+                            <td>Amit Patel</td>
+                            <td style="text-align: right;"><span class="succ-readiness">0-12 months</span></td>
+                        </tr>
+                        <tr>
+                            <td>Neha Gupta</td>
+                            <td style="text-align: right;"><span class="succ-readiness">1-3 years</span></td>
+                        </tr>
+                        <tr>
+                            <td>Karthik Iyer</td>
+                            <td style="text-align: right;"><span class="succ-readiness">1-3 years</span></td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // --- Shared & UI Variables ---
+        let allEmployees = [];
+        let uploadedEmployeeData = null;
+        let compState = 0;
+        let ltipState = 0;
+        let employeeComboboxMatches = [];
+        let employeeComboboxActiveIndex = -1;
+        let employeeComboboxCloseTimer = null;
+
+        const employeeDatabase = {
+            "vikram": { 
+                name: "Vikram Desai", title: "VP - Optical Networking Solutions", bu: "Sterlite", 
+                grade: "VP (Band 4)", manager: "Sanjay Mehta", roleExp: "2.1 Yrs", exp: "2.1 Yrs / 14 Yrs", function: "Engineering", comp: "$250K + Equity",
+                totalUnvestedLtipBenefit: "-", lastPromotionDate: "-"
+            }
+        };
+
+        const fieldMapping = {
+            "Name":                     { id: "data-name",               type: "text" },
+            "Title":                    { id: "data-title",              type: "text" },
+            "Business Unit":            { id: "data-bu",                 type: "bu"   },
+            "Grade":                    { id: "data-grade",              type: "text" },
+            "Manager":                  { id: "data-manager",            type: "text" },
+            "Location":                 { id: "data-location",           type: "text" },
+            "Exp in Current Role":      { id: "data-exp-role",           type: "text" },
+            "Exp in Current Org":       { id: "data-exp-sterlite",       type: "text" },
+            "Exp in Current Org (Overall Exp)": { id: "data-exp-overall", type: "text" },
+            "Current Experience":       { id: "data-current-experience", type: "experience_list" },
+            "Previous Experience":      { id: "data-previous-experience",type: "experience_list" },
+            "Function":                 { id: "data-function",           type: "text" },
+            
+            "Compensation FY 26-27":    { id: "comp-display",            type: "comp" }, // Handled in syncTrend
+            "Total Unvested LTIP Benefit": { id: "data-ltip-benefit",    type: "ltip" },
+            "Last Promotion Date":      { id: "data-last-promotion-date", type: "text" },
+            "Comp Trend FY 25-26":      { id: "data-comp-trend-2",       type: "text" },
+            "Comp Trend FY 24-25":      { id: "data-comp-trend-1",       type: "text" },
+            
+            "TR Rating FY 25-26":       { id: "data-tr",                 type: "text" }, // Handled in syncTrend
+            "TR Trend FY 24-25":        { id: "data-tr-trend-2",         type: "text" },
+            "TR Trend FY 23-24":        { id: "data-tr-trend-1",         type: "text" },
+            
+            "Ability":                  { id: "data-pot-ability",        type: "text" },
+            "Aspiration":               { id: "data-pot-aspiration",     type: "text" },
+            "Alignment":                { id: "data-pot-alignment",      type: "text" },
+            
+            "Perf 25-26 (H1)":          { id: "data-perf-1",             type: "text" },
+            "Perf 24-25 (H2)":          { id: "data-perf-2",             type: "text" },
+            "Perf 23-24 (H1)":          { id: "data-perf-3",             type: "text" }, 
+            
+            "Risk of Loss":             { id: "data-risk-loss",          type: "text" },
+            "Impact of Loss":           { id: "data-risk-impact",        type: "text" },
+            "Willing to Relocate":      { id: "data-risk-relocate",      type: "text" },
+            
+            "360 Trend 2025":           { id: "data-360",                type: "text" }, // Handled in syncTrend
+            "360 Trend 2024":           { id: "data-360-trend-2",        type: "text" },
+            "360 Trend 2023":           { id: "data-360-trend-1",        type: "text" },
+            
+            "Manager Climate Score FY26-27": { id: "data-climate",       type: "climate_val" }, // Handled in syncTrend
+            "Manager Climate Score FY25-26": { id: "data-climate-trend-2", type: "text" },
+            "Manager Climate Score FY24-25": { id: "data-climate-trend-1", type: "text" },
+            
+            "GPTW Score 2025":          { id: "data-gptw",               type: "text" }, // Handled in syncTrend
+            "GPTW Score 2024":          { id: "data-gptw-trend-2",       type: "text" },
+            "GPTW Score 2023":          { id: "data-gptw-trend-1",       type: "text" },
+            
+            // Future Readiness
+            "Readiness 1 - Timeline":   { id: "data-readiness1-timeline", type: "text" },
+            "Readiness 1 - Role":       { id: "data-readiness1-role",    type: "text" },
+            "Readiness 1 - Desc":       { id: "data-readiness1-desc",    type: "readiness_desc" },
+            "Readiness 2 - Timeline":   { id: "data-readiness2-timeline", type: "text" },
+            "Readiness 2 - Role":       { id: "data-readiness2-role",    type: "text" },
+            "Readiness 2 - Desc":       { id: "data-readiness2-desc",    type: "readiness_desc" },
+            
+            // Competency Profile
+            "Core Strengths":           { id: "data-strengths-list",     type: "list" },
+            "Development Areas":        { id: "data-development-list",   type: "list" },
+            
+            // Actionable
+            "Actions Taken":            { id: "data-actions-taken-tbody", type: "actions_table" },
+            "Proposed Actions":         { id: "data-actions-proposed-tbody", type: "proposed_actions_table" },
+            
+            // Potential Successors
+            "Potential Successors":     { id: "data-successors-tbody",   type: "successors_table" }
+        };
+
+        // --- Core Application Functions ---
+        function updateLogo(buName) {
+            const logo = document.getElementById('company-logo');
+            const fallback = document.getElementById('logo-fallback');
+            const bu = String(buName || '').trim();
+            const key = bu.toLowerCase();
+            const embeddedLogoData = window.companyLogoData || {};
+
+            logo.style.display = 'block';
+            fallback.style.display = 'none';
+            fallback.textContent = bu || 'Logo';
+
+            // Check embedded data (keyed by lowercase BU name, with and without spaces)
+            const embedded = embeddedLogoData[key]
+                || embeddedLogoData[key.replace(/\s+/g, '')]
+                || embeddedLogoData[key.replace(/[^a-z0-9]/g, '')];
+
+            const noSpaces = bu.replace(/\s+/g, '');
+            const candidates = embedded ? [embedded] : (bu ? [
+                `${bu}.png`, `${bu}.jpg`,
+                `${noSpaces}.png`, `${noSpaces}.jpg`
+            ] : []);
+
+            let i = 0;
+            const tryNext = () => {
+                if (i >= candidates.length) {
+                    logo.onerror = null;
+                    logo.style.display = 'none';
+                    fallback.style.display = 'block';
+                    return;
+                }
+                logo.onerror = tryNext;
+                logo.src = candidates[i++];
+                logo.alt = bu || 'Logo';
+            };
+            tryNext();
+        }
+
+        function getEmployeeInitials(name) {
+            return String(name || '')
+                .trim()
+                .split(/\s+/)
+                .filter(Boolean)
+                .slice(0, 2)
+                .map(part => part.charAt(0).toUpperCase())
+                .join('') || 'NA';
+        }
+
+        function buildAvatarPlaceholder(name) {
+            const initials = getEmployeeInitials(name);
+            const svg = `<svg xmlns="http://www.w3.org/2000/svg" width="160" height="160" viewBox="0 0 160 160"><rect width="160" height="160" fill="#94A3B8"/><text x="50%" y="50%" dominant-baseline="middle" text-anchor="middle" fill="#FFFFFF" font-family="Inter, Arial, sans-serif" font-size="52" font-weight="700">${initials}</text></svg>`;
+            return `data:image/svg+xml;charset=UTF-8,${encodeURIComponent(svg)}`;
+        }
+
+        function setEmployeeAvatar(name) {
+            const avatar = document.getElementById('employee-avatar');
+            if (!avatar) return;
+
+            const cleanName = String(name || '').trim().replace(/[\\/:*?"<>|]/g, '').replace(/\s+/g, ' ');
+            const embeddedEmployeeImageData = window.employeeImageData || {};
+            const extensions = ['jpg', 'jgp', 'jpeg', 'png', 'webp', 'gif', 'bmp'];
+            let extIndex = 0;
+
+            if (cleanName && embeddedEmployeeImageData[cleanName]) {
+                avatar.onerror = null;
+                avatar.src = embeddedEmployeeImageData[cleanName];
+                avatar.alt = `${cleanName} photo`;
+                return;
+            }
+
+            const loadNext = () => {
+                if (!cleanName || extIndex >= extensions.length) {
+                    avatar.onerror = null;
+                    avatar.src = buildAvatarPlaceholder(cleanName);
+                    avatar.alt = cleanName ? `${cleanName} placeholder` : 'Employee placeholder';
+                    return;
+                }
+
+                const ext = extensions[extIndex++];
+                avatar.onerror = loadNext;
+                avatar.src = `Employee Images/${encodeURIComponent(cleanName)}.${ext}`;
+                avatar.alt = `${cleanName} photo`;
+            };
+
+            loadNext();
+        }
+
+        async function readBlobAsDataUrl(blob) {
+            return await new Promise((resolve, reject) => {
+                const reader = new FileReader();
+                reader.onload = () => resolve(String(reader.result || ''));
+                reader.onerror = () => reject(reader.error || new Error('Blob read failed.'));
+                reader.readAsDataURL(blob);
+            });
+        }
+
+        async function getExportSafeImageSrc(imgEl, fallbackSrc = '') {
+            if (!imgEl) return fallbackSrc;
+            const src = imgEl.getAttribute('src') || '';
+            if (!src) return fallbackSrc;
+            if (src.startsWith('data:')) return src;
+            if (!imgEl.complete || imgEl.naturalWidth === 0) return fallbackSrc;
+
+            try {
+                const canvas = document.createElement('canvas');
+                canvas.width = imgEl.naturalWidth;
+                canvas.height = imgEl.naturalHeight;
+                const ctx = canvas.getContext('2d');
+                if (!ctx) return fallbackSrc;
+                ctx.drawImage(imgEl, 0, 0);
+                const dataUrl = canvas.toDataURL('image/png');
+                canvas.width = 0;
+                canvas.height = 0;
+                return dataUrl || fallbackSrc;
+            } catch (error) {
+                try {
+                    const resolvedSrc = imgEl.currentSrc || new URL(src, document.baseURI).href;
+                    const response = await fetch(resolvedSrc);
+                    if (!response.ok) return fallbackSrc;
+                    const blob = await response.blob();
+                    const dataUrl = await readBlobAsDataUrl(blob);
+                    return dataUrl || fallbackSrc;
+                } catch (fetchError) {
+                    return fallbackSrc;
+                }
+            }
+        }
+
+        function getResolvedImageSrc(imgEl, fallbackSrc = '') {
+            if (!imgEl) return fallbackSrc;
+            const rawSrc = imgEl.getAttribute('src') || '';
+            if (!rawSrc) return fallbackSrc;
+
+            try {
+                return imgEl.currentSrc || new URL(rawSrc, document.baseURI).href || fallbackSrc;
+            } catch (error) {
+                return rawSrc || fallbackSrc;
+            }
+        }
+
+        function getAvatarExportInfo() {
+            const avatar = document.getElementById('employee-avatar');
+            if (!avatar) return null;
+
+            const rawSrc = avatar.getAttribute('src') || '';
+            const absoluteSrc = avatar.currentSrc || (rawSrc ? new URL(rawSrc, document.baseURI).href : '');
+            if (!absoluteSrc) return null;
+
+            const avatarRect = avatar.getBoundingClientRect();
+            const bodyRect = document.body.getBoundingClientRect();
+            const safeDataUrl = '';
+
+            return {
+                rawSrc,
+                absoluteSrc,
+                safeDataUrl,
+                left: avatarRect.left - bodyRect.left,
+                top: avatarRect.top - bodyRect.top,
+                width: avatarRect.width,
+                height: avatarRect.height
+            };
+        }
+
+        function prepareClonedImagesForExport(clonedDocument, options = {}) {
+            const {
+                logoDataUrl = '',
+                logoSource = '',
+                avatarDataUrl = '',
+                avatarSource = '',
+                logoFallbackText = 'Logo'
+            } = options;
+            const clonedLogo = clonedDocument.getElementById('company-logo');
+            const clonedFallback = clonedDocument.getElementById('logo-fallback');
+            const clonedAvatar = clonedDocument.getElementById('employee-avatar');
+
+            if (clonedLogo) {
+                const bestLogoSrc = logoDataUrl || (logoSource && logoSource.startsWith('data:') ? logoSource : '');
+                if (bestLogoSrc) {
+                    clonedLogo.onerror = null;
+                    clonedLogo.src = bestLogoSrc;
+                    clonedLogo.style.display = 'block';
+                } else {
+                    clonedLogo.removeAttribute('src');
+                    clonedLogo.style.display = 'none';
+                }
+            }
+
+            if (clonedFallback) {
+                const hasLogo = Boolean(logoDataUrl || (logoSource && logoSource.startsWith('data:')));
+                clonedFallback.textContent = logoFallbackText;
+                clonedFallback.style.display = hasLogo ? 'none' : 'block';
+            }
+
+            if (clonedAvatar) {
+                const bestAvatarSrc = avatarDataUrl || (avatarSource && avatarSource.startsWith('data:') ? avatarSource : '');
+                if (bestAvatarSrc) {
+                    clonedAvatar.onerror = null;
+                    clonedAvatar.src = bestAvatarSrc;
+                } else {
+                    clonedAvatar.src = buildAvatarPlaceholder(clonedDocument.getElementById('data-name')?.innerText || '');
+                }
+            }
+
+            clonedDocument.querySelectorAll('img').forEach(img => {
+                const src = img.getAttribute('src') || '';
+                if (src && !src.startsWith('data:') && img.id !== 'employee-avatar' && img.id !== 'company-logo') {
+                    img.removeAttribute('src');
+                    img.style.display = 'none';
+                }
+            });
+        }
+
+        function waitForImageReady(imgEl, timeout = 3000) {
+            if (!imgEl) return Promise.resolve();
+            if (imgEl.complete && imgEl.naturalWidth !== 0) return Promise.resolve();
+
+            return new Promise(resolve => {
+                let settled = false;
+                const finish = () => {
+                    if (settled) return;
+                    settled = true;
+                    imgEl.removeEventListener('load', finish);
+                    imgEl.removeEventListener('error', finish);
+                    clearTimeout(timer);
+                    resolve();
+                };
+                const timer = setTimeout(finish, timeout);
+                imgEl.addEventListener('load', finish, { once: true });
+                imgEl.addEventListener('error', finish, { once: true });
+            });
+        }
+
+        async function waitForExportAssets() {
+            if (document.fonts && document.fonts.ready) {
+                try {
+                    await document.fonts.ready;
+                } catch (error) {
+                    console.warn('Font readiness check failed during export.', error);
+                }
+            }
+
+            await Promise.all([
+                waitForImageReady(document.getElementById('company-logo')),
+                waitForImageReady(document.getElementById('employee-avatar'))
+            ]);
+        }
+
+        async function captureDashboardImageForExport() {
+            await waitForExportAssets();
+
+            const logo = document.getElementById('company-logo');
+            const avatar = document.getElementById('employee-avatar');
+            const avatarFallback = buildAvatarPlaceholder(document.getElementById('data-name')?.innerText || '');
+
+            // Prefer stored data URL from companyLogoData (works on file:// and avoids canvas taint)
+            const buKey = (document.getElementById('data-bu')?.innerText || '').toLowerCase().trim();
+            const storedLogoDataUrl = (window.companyLogoData || {})[buKey]
+                || (window.companyLogoData || {})[buKey.replace(/\s+/g, '')];
+
+            const logoSource = logo && logo.style.display !== 'none' ? getResolvedImageSrc(logo, '') : '';
+            const logoDataUrl = storedLogoDataUrl
+                || (logo && logo.style.display !== 'none' ? await getExportSafeImageSrc(logo, '') : '');
+            const avatarSource = getResolvedImageSrc(avatar, avatarFallback);
+            const avatarDataUrl = await getExportSafeImageSrc(avatar, avatarFallback);
+            const logoFallbackText = document.getElementById('data-bu')?.innerText || 'Logo';
+
+            const canvas = await html2canvas(document.body, {
+                backgroundColor: '#EAEFF4',
+                scale: Math.max(2, window.devicePixelRatio || 1),
+                useCORS: true,
+                allowTaint: false,
+                logging: false,
+                imageTimeout: 0,
+                removeContainer: true,
+                onclone: clonedDocument => {
+                    prepareClonedImagesForExport(clonedDocument, {
+                        logoDataUrl,
+                        logoSource,
+                        avatarDataUrl,
+                        avatarSource,
+                        logoFallbackText
+                    });
+                }
+            });
+
+            const dataUrl = canvas.toDataURL('image/png');
+            const width = canvas.width;
+            const height = canvas.height;
+            canvas.width = 0;
+            canvas.height = 0;
+            return { dataUrl, width, height };
+        }
+
+        function getExportHiddenElements() {
+            return Array.from(document.querySelectorAll('.header-right .btn, #bulk-upload, #excel-upload, #employee-filter-group'));
+        }
+
+        function askExportVisibilityOptions(exportLabel) {
+            const showCompensation = window.confirm(
+                `Should compensation be visible in the ${exportLabel}?\n\nClick OK for visible.\nClick Cancel for hidden.`
+            );
+            const showLtip = window.confirm(
+                `Should LTIP benefit be visible in the ${exportLabel}?\n\nClick OK for visible.\nClick Cancel for hidden.`
+            );
+
+            return { showCompensation, showLtip };
+        }
+
+        function restoreSelectedEmployeeView(filterEl, currentFilterValue) {
+            if (currentFilterValue && currentFilterValue.startsWith('__bulk_')) {
+                const idx = parseInt(currentFilterValue.replace('__bulk_', ''), 10);
+                if (allEmployees[idx]) renderEmployee(allEmployees[idx]);
+                if (filterEl) filterEl.value = currentFilterValue;
+                syncEmployeeInput(currentFilterValue);
+            } else if (currentFilterValue === '__uploaded__' && uploadedEmployeeData) {
+                renderEmployee(uploadedEmployeeData);
+                if (filterEl) filterEl.value = currentFilterValue;
+                syncEmployeeInput(currentFilterValue);
+            } else if (currentFilterValue && employeeDatabase[currentFilterValue]) {
+                if (filterEl) filterEl.value = currentFilterValue;
+                handleEmployeeChange();
+            }
+        }
+
+        function addCaptureToPdf(pdf, capture) {
+            const orientation = capture.width >= capture.height ? 'landscape' : 'portrait';
+
+            if (!pdf.instance) {
+                pdf.instance = new pdf.jsPDF({
+                    orientation,
+                    unit: 'px',
+                    format: [capture.width, capture.height],
+                    compress: true,
+                    hotfixes: ['px_scaling']
+                });
+            } else {
+                pdf.instance.addPage([capture.width, capture.height], orientation);
+            }
+
+            const pageWidth = pdf.instance.internal.pageSize.getWidth();
+            const pageHeight = pdf.instance.internal.pageSize.getHeight();
+            pdf.instance.addImage(capture.dataUrl, 'PNG', 0, 0, pageWidth, pageHeight, undefined, 'FAST');
+        }
+
+        // --- Logo PPT routing helpers ---
+        function getLogoExportInfo(slideWidth, slideHeight) {
+            const buKey = (document.getElementById('data-bu')?.innerText || '').toLowerCase().trim();
+            const logoDataUrl = (window.companyLogoData || {})[buKey]
+                || (window.companyLogoData || {})[buKey.replace(/\s+/g, '')];
+            if (!logoDataUrl) return null;
+
+            const logoContainer = document.querySelector('.logo-container');
+            if (!logoContainer) return null;
+
+            const bodyRect = document.body.getBoundingClientRect();
+            const logoRect = logoContainer.getBoundingClientRect();
+
+            const x = ((logoRect.left - bodyRect.left) / bodyRect.width) * slideWidth;
+            const y = ((logoRect.top - bodyRect.top) / bodyRect.height) * slideHeight;
+            const w = (logoRect.width / bodyRect.width) * slideWidth;
+            const h = (logoRect.height / bodyRect.height) * slideHeight;
+
+            return { dataUrl: logoDataUrl, x, y, w, h };
+        }
+
+        function hideLogoForCapture() {
+            const el = document.querySelector('.logo-container');
+            if (el) {
+                el._pptVis = el.style.visibility || '';
+                el.style.visibility = 'hidden';
+            }
+            return el;
+        }
+
+        function restoreLogoAfterCapture(el) {
+            if (el) {
+                el.style.visibility = el._pptVis || '';
+                delete el._pptVis;
+            }
+        }
+
+        function addLogoToSlide(slide, logoInfo) {
+            if (!logoInfo) return;
+            slide.addImage({
+                data: logoInfo.dataUrl,
+                x: logoInfo.x,
+                y: logoInfo.y,
+                w: logoInfo.w,
+                h: logoInfo.h,
+                sizing: { type: 'contain', w: logoInfo.w, h: logoInfo.h }
+            });
+        }
+
+        async function createPptFromCurrentView(fileName) {
+            if (typeof html2canvas === 'undefined' || typeof PptxGenJS === 'undefined') {
+                alert("PPT export library could not be loaded. Please refresh the page and try again.");
+                return;
+            }
+
+            const exportButton = document.getElementById('ppt-export-btn');
+            const exportHiddenElements = getExportHiddenElements();
+
+            if (exportButton) {
+                exportButton.disabled = true;
+                exportButton.textContent = 'Preparing PPT...';
+            }
+
+            let logoContainer = null;
+            try {
+                exportHiddenElements.forEach(el => {
+                    el.dataset.exportDisplay = el.style.display || '';
+                    el.style.display = 'none';
+                });
+
+                // Hide logo element — it will be added as a separate PPT object
+                logoContainer = hideLogoForCapture();
+                await new Promise(resolve => requestAnimationFrame(() => requestAnimationFrame(resolve)));
+                const capture = await captureDashboardImageForExport();
+
+                const pptx = new PptxGenJS();
+                const slideWidth = 13.333;
+                const slideHeight = slideWidth * (capture.height / capture.width);
+                pptx.defineLayout({ name: 'SCORECARD_EXPORT', width: slideWidth, height: slideHeight });
+                pptx.layout = 'SCORECARD_EXPORT';
+                pptx.author = 'OpenAI Codex';
+                pptx.subject = 'Executive Talent Scorecard';
+                pptx.title = fileName.replace(/\.pptx$/i, '');
+                pptx.company = 'Sterlite';
+
+                const slide = pptx.addSlide();
+                slide.background = { color: 'EAEFF4' };
+                slide.addImage({ data: capture.dataUrl, x: 0, y: 0, w: slideWidth, h: slideHeight });
+                // Logo as its own independent PPT image element
+                addLogoToSlide(slide, getLogoExportInfo(slideWidth, slideHeight));
+
+                await pptx.writeFile({ fileName });
+            } catch (error) {
+                console.error(error);
+                alert(`PPT export could not be completed.\n\nError: ${error && error.message ? error.message : error}`);
+            } finally {
+                restoreLogoAfterCapture(logoContainer);
+                exportHiddenElements.forEach(el => { el.style.display = el.dataset.exportDisplay || ''; delete el.dataset.exportDisplay; });
+                if (exportButton) {
+                    exportButton.disabled = false;
+                    exportButton.textContent = 'Export PPT';
+                }
+            }
+        }
+
+        async function exportSinglePpt() {
+            const currentName = (document.getElementById('data-name')?.innerText || 'Employee').trim().replace(/\s+/g, '_');
+
+            const { showCompensation, showLtip } = askExportVisibilityOptions('PPT');
+
+            const visibilityHiddenElements = [];
+            const compensationRow = document.getElementById('compensation-row');
+            if (!showCompensation && compensationRow) {
+                visibilityHiddenElements.push(compensationRow);
+            }
+            const ltipRow = document.getElementById('ltip-row');
+            if (!showLtip && ltipRow) {
+                visibilityHiddenElements.push(ltipRow);
+            }
+
+            try {
+                visibilityHiddenElements.forEach(el => {
+                    el.dataset.exportDisplay = el.style.display || '';
+                    el.style.display = 'none';
+                });
+
+                await createPptFromCurrentView(`Talent_Scorecard_${currentName}.pptx`);
+            } finally {
+                visibilityHiddenElements.forEach(el => { el.style.display = el.dataset.exportDisplay || ''; delete el.dataset.exportDisplay; });
+            }
+        }
+
+        async function exportBulkPpt() {
+            if (!allEmployees.length) {
+                alert("Upload an employee Excel file first, then use bulk PPT export.");
+                return;
+            }
+
+            if (typeof html2canvas === 'undefined' || typeof PptxGenJS === 'undefined') {
+                alert("PPT export library could not be loaded. Please refresh the page and try again.");
+                return;
+            }
+
+            const { showCompensation, showLtip } = askExportVisibilityOptions('bulk PPT');
+
+            const exportButton = document.getElementById('ppt-export-btn');
+            const exportHiddenElements = getExportHiddenElements();
+            const compensationRow = document.getElementById('compensation-row');
+            if (!showCompensation && compensationRow) {
+                exportHiddenElements.push(compensationRow);
+            }
+            const ltipRow = document.getElementById('ltip-row');
+            if (!showLtip && ltipRow) {
+                exportHiddenElements.push(ltipRow);
+            }
+            const filterEl = document.getElementById('employee-filter');
+            const currentFilterValue = filterEl ? filterEl.value : '';
+            const currentCompState = compState;
+            const currentLtipState = ltipState;
+
+            if (exportButton) {
+                exportButton.disabled = true;
+                exportButton.textContent = 'Preparing PPT...';
+            }
+
+            try {
+                exportHiddenElements.forEach(el => {
+                    el.dataset.exportDisplay = el.style.display || '';
+                    el.style.display = 'none';
+                });
+
+                let pptx = null;
+                let slideWidth = 13.333;
+                let slideHeight = 7.5;
+
+                for (let i = 0; i < allEmployees.length; i++) {
+                    renderEmployee(allEmployees[i]);
+                    if (filterEl) filterEl.value = `__bulk_${i}`;
+                    setCompensationState(showCompensation ? 2 : 0);
+                    setLtipBenefitState(showLtip ? 2 : 0);
+
+                    if (exportButton) {
+                        exportButton.textContent = `PPT ${i + 1}/${allEmployees.length}`;
+                    }
+
+                    await new Promise(resolve => requestAnimationFrame(() => requestAnimationFrame(resolve)));
+                    const capture = await captureDashboardImageForExport();
+
+                    if (!pptx) {
+                        pptx = new PptxGenJS();
+                        slideHeight = slideWidth * (capture.height / capture.width);
+                        pptx.defineLayout({ name: 'SCORECARD_EXPORT', width: slideWidth, height: slideHeight });
+                        pptx.layout = 'SCORECARD_EXPORT';
+                        pptx.author = 'OpenAI Codex';
+                        pptx.subject = 'Executive Talent Scorecards';
+                        pptx.title = `Talent_Scorecard_Bulk_${allEmployees.length}_Employees`;
+                        pptx.company = 'Sterlite';
+                    }
+
+                    const slide = pptx.addSlide();
+                    slide.background = { color: 'EAEFF4' };
+                    slide.addImage({ data: capture.dataUrl, x: 0, y: 0, w: slideWidth, h: slideHeight });
+                }
+
+                if (!pptx) {
+                    throw new Error('No slides were available to export.');
+                }
+
+                await pptx.writeFile({ fileName: `Talent_Scorecard_Bulk_${allEmployees.length}_Employees.pptx` });
+            } catch (error) {
+                console.error(error);
+                alert(`Bulk PPT export could not be completed.\n\nError: ${error && error.message ? error.message : error}`);
+            } finally {
+                restoreSelectedEmployeeView(filterEl, currentFilterValue);
+                setCompensationState(currentCompState);
+                setLtipBenefitState(currentLtipState);
+                exportHiddenElements.forEach(el => { el.style.display = el.dataset.exportDisplay || ''; delete el.dataset.exportDisplay; });
+                if (exportButton) {
+                    exportButton.disabled = false;
+                    exportButton.textContent = 'Export PPT';
+                }
+            }
+        }
+
+        async function exportPpt() {
+            if (!allEmployees.length) {
+                await exportSinglePpt();
+                return;
+            }
+
+            const useBulk = window.confirm(
+                "Choose PPT export mode.\n\nClick OK for bulk PPT with all uploaded employees.\nClick Cancel for single PPT for the currently visible scorecard."
+            );
+
+            if (useBulk) {
+                await exportBulkPpt();
+            } else {
+                await exportSinglePpt();
+            }
+        }
+
+        function handleEmployeeChange() {
+            const filterEl = document.getElementById('employee-filter');
+            const val = filterEl.value;
+            syncEmployeeInput(val);
+            
+            if (val && val.startsWith('__bulk_')) {
+                const idx = parseInt(val.replace('__bulk_', ''), 10);
+                if (allEmployees[idx]) {
+                    uploadedEmployeeData = allEmployees[idx];
+                    renderEmployee(allEmployees[idx]);
+                }
+                return;
+            }
+            if (val === '__uploaded__' && uploadedEmployeeData) {
+                renderEmployee(uploadedEmployeeData);
+                return;
+            }
+            if (val && employeeDatabase[val]) {
+                const data = employeeDatabase[val];
+                document.getElementById('data-name').innerText = data.name;
+                document.getElementById('data-title').innerText = data.title;
+                document.getElementById('data-bu').innerText = data.bu;
+                document.getElementById('data-grade').innerText = data.grade;
+                document.getElementById('data-manager').innerText = data.manager;
+                const expParts = (data.exp || '').split('/').map(s => s.trim());
+                document.getElementById('data-exp-role').innerText = data.roleExp || '-';
+                document.getElementById('data-exp-sterlite').innerText = expParts[0] || '-';
+                document.getElementById('data-exp-overall').innerText = expParts[1] || '-';
+                document.getElementById('data-function').innerText = data.function;
+                const ltipEl = document.getElementById('data-ltip-benefit');
+                const ltipValue = data.totalUnvestedLtipBenefit || '-';
+                ltipEl.setAttribute('data-value', ltipValue);
+                if (typeof ltipState !== 'undefined' && ltipState > 0) {
+                    ltipEl.textContent = ltipValue;
+                }
+                document.getElementById('data-last-promotion-date').innerText = formatDisplayDate(data.lastPromotionDate);
+                setEmployeeAvatar(data.name);
+                updateLogo(data.bu);
+                const compEl = document.getElementById('comp-display');
+                compEl.setAttribute('data-value', data.comp);
+                if (typeof compState !== 'undefined' && compState > 0) compEl.textContent = data.comp;
+                setLtipBenefitState(ltipState);
+                updatePreviousCycleTopTalent();
+            }
+        }
+
+        function cycleCompensation() {
+            compState = (compState + 1) % 3; 
+            setCompensationState(compState);
+        }
+
+        function setCompensationState(state) {
+            compState = state;
+            const valDisplay = document.getElementById('comp-display');
+            const trendDisplay = document.getElementById('comp-trend');
+            const switchEl = document.getElementById('comp-switch');
+            const realValue = valDisplay.getAttribute('data-value');
+
+            switchEl.className = 'switch-3';
+            if (compState === 0) {
+                valDisplay.textContent = '********';
+                valDisplay.classList.add('comp-hidden');
+                trendDisplay.style.display = 'none';
+            } else if (compState === 1) {
+                switchEl.classList.add('state-1');
+                valDisplay.textContent = realValue;
+                valDisplay.classList.remove('comp-hidden');
+                trendDisplay.style.display = 'none';
+            } else {
+                switchEl.classList.add('state-2');
+                valDisplay.textContent = realValue;
+                valDisplay.classList.remove('comp-hidden');
+                trendDisplay.style.display = 'flex';
+            }
+        }
+
+        function cycleLtipBenefit() {
+            ltipState = (ltipState + 1) % 3;
+            setLtipBenefitState(ltipState);
+        }
+
+        function setLtipBenefitState(state) {
+            ltipState = state;
+            const valDisplay = document.getElementById('data-ltip-benefit');
+            const switchEl = document.getElementById('ltip-switch');
+            const realValue = valDisplay.getAttribute('data-value') || '-';
+
+            switchEl.className = 'switch-3';
+            if (ltipState === 0) {
+                valDisplay.textContent = '********';
+                valDisplay.classList.add('comp-hidden');
+            } else if (ltipState === 1) {
+                switchEl.classList.add('state-1');
+                valDisplay.textContent = realValue;
+                valDisplay.classList.remove('comp-hidden');
+            } else {
+                switchEl.classList.add('state-2');
+                valDisplay.textContent = realValue;
+                valDisplay.classList.remove('comp-hidden');
+            }
+        }
+
+        function updatePreviousCycleTopTalent() {
+            const labelEl = document.getElementById('data-prev-cycle-top-talent');
+            const trendEl = document.getElementById('data-tr-trend-2');
+            if (!labelEl || !trendEl) return;
+
+            const trendValue = Number(trendEl.innerText.trim());
+            const isTopTalent = [6, 8, 9].includes(trendValue);
+            labelEl.innerText = `PREVIOUS CYCLE TOP TALENT: ${isTopTalent ? 'YES' : 'NO'}`;
+        }
+
+        function toggleTrend(btn) {
+            const parent = btn.closest('.gold-box, .progress-row');
+            if (!parent) return;
+            const trendContainer = parent.querySelector('.trend-container');
+            if (!trendContainer) return;
+            if (trendContainer.style.display === 'none') {
+                trendContainer.style.display = 'flex';
+                btn.textContent = 'HIDE TREND';
+            } else {
+                trendContainer.style.display = 'none';
+                btn.textContent = 'SHOW TREND';
+            }
+        }
+
+        function readExperienceList(ulEl) {
+            return Array.from(ulEl.querySelectorAll('li'))
+                .map(li => li.innerText.replace(/\s+/g, ' ').trim())
+                .filter(t => t && t !== '-')
+                .join(' \n ');
+        }
+
+        function escapeHtml(text) {
+            return String(text)
+                .replace(/&/g, '&amp;')
+                .replace(/</g, '&lt;')
+                .replace(/>/g, '&gt;')
+                .replace(/"/g, '&quot;')
+                .replace(/'/g, '&#39;');
+        }
+
+        function getActionStatusMeta(status) {
+            const rawStatus = String(status || '').trim();
+            const normalized = rawStatus.toLowerCase().replace(/[\s_-]+/g, ' ');
+
+            if (!rawStatus) return { label: '-', pillClass: 'pending' };
+            if (['done', 'completed', 'complete', 'closed'].includes(normalized)) {
+                return { label: rawStatus.toUpperCase(), pillClass: 'done' };
+            }
+            if (['in progress', 'ongoing', 'active', 'planned', 'recommended'].includes(normalized)) {
+                return { label: rawStatus.toUpperCase(), pillClass: 'inprogress' };
+            }
+            if (['pending', 'open', 'not started'].includes(normalized)) {
+                return { label: rawStatus.toUpperCase(), pillClass: 'pending' };
+            }
+
+            return { label: rawStatus.toUpperCase(), pillClass: 'amber' };
+        }
+
+        function buildActionsTableRows(value, includeRemark) {
+            if (!value) {
+                return `<tr><td colspan="${includeRemark ? 3 : 2}" style="text-align:center">-</td></tr>`;
+            }
+
+            const rows = value.split('|').map(s => s.trim()).filter(Boolean);
+            if (!rows.length) {
+                return `<tr><td colspan="${includeRemark ? 3 : 2}" style="text-align:center">-</td></tr>`;
+            }
+
+            return rows.map(row => {
+                const parts = row.split('::').map(s => s.trim());
+                const action = escapeHtml(parts[0] || '');
+                const remark = escapeHtml(parts[2] || '');
+                const statusMeta = getActionStatusMeta(parts[1] || '');
+
+                if (includeRemark) {
+                    return `<tr>
+                        <td><div class="td-flex"><span class="bullet">&bull;</span><span>${action}</span></div></td>
+                        <td><span class="pill ${statusMeta.pillClass}">${escapeHtml(statusMeta.label)}</span></td>
+                        <td><span class="action-remark">${remark || '-'}</span></td>
+                    </tr>`;
+                }
+
+                return `<tr data-remark="${remark}">
+                    <td><div class="td-flex"><span class="bullet">&bull;</span><span>${action}</span></div></td>
+                    <td><span class="pill ${statusMeta.pillClass}">${escapeHtml(statusMeta.label)}</span></td>
+                </tr>`;
+            }).join('');
+        }
+
+        function getSelectableEmployees() {
+            if (allEmployees.length) {
+                return allEmployees.map((emp, idx) => ({
+                    value: `__bulk_${idx}`,
+                    name: String(emp["Name"] || `Employee ${idx + 1}`).trim()
+                }));
+            }
+
+            return Object.entries(employeeDatabase).map(([key, data]) => ({
+                value: key,
+                name: String(data.name || key).trim()
+            }));
+        }
+
+        function getEmployeeComboboxElements() {
+            return {
+                comboboxEl: document.getElementById('employee-combobox'),
+                inputEl: document.getElementById('employee-filter-input'),
+                menuEl: document.getElementById('employee-filter-menu'),
+                filterEl: document.getElementById('employee-filter')
+            };
+        }
+
+        function syncEmployeeInput(value) {
+            const { inputEl, filterEl } = getEmployeeComboboxElements();
+            if (!inputEl || !filterEl) return;
+
+            const selectedOption = getSelectableEmployees().find(employee => employee.value === value);
+            inputEl.value = selectedOption ? selectedOption.name : '';
+        }
+
+        function populateEmployeeFilterOptions(selectedValue) {
+            const { filterEl } = getEmployeeComboboxElements();
+            if (!filterEl) return;
+
+            const employees = getSelectableEmployees();
+
+            filterEl.innerHTML = '';
+            employees.forEach(employee => {
+                const option = document.createElement('option');
+                option.value = employee.value;
+                option.textContent = employee.name;
+                filterEl.appendChild(option);
+            });
+
+            const fallbackValue = employees[0]?.value || '';
+            filterEl.value = employees.some(employee => employee.value === selectedValue) ? selectedValue : fallbackValue;
+            syncEmployeeInput(filterEl.value);
+            renderEmployeeComboboxOptions('');
+        }
+
+        function renderEmployeeComboboxOptions(query = '') {
+            const { menuEl } = getEmployeeComboboxElements();
+            if (!menuEl) return;
+
+            const normalizedQuery = String(query || '').trim().toLowerCase();
+            employeeComboboxMatches = getSelectableEmployees().filter(employee =>
+                !normalizedQuery || employee.name.toLowerCase().includes(normalizedQuery)
+            );
+            employeeComboboxActiveIndex = employeeComboboxMatches.length ? 0 : -1;
+
+            if (!employeeComboboxMatches.length) {
+                menuEl.innerHTML = '<div class="employee-combobox-empty">No matching employees</div>';
+                return;
+            }
+
+            menuEl.innerHTML = employeeComboboxMatches.map((employee, idx) => `
+                <button
+                    type="button"
+                    class="employee-combobox-option${idx === employeeComboboxActiveIndex ? ' active' : ''}"
+                    role="option"
+                    aria-selected="${idx === employeeComboboxActiveIndex ? 'true' : 'false'}"
+                    onmousedown="event.preventDefault()"
+                    onclick="selectEmployeeComboboxOption('${escapeHtml(employee.value)}')"
+                >${escapeHtml(employee.name)}</button>
+            `).join('');
+        }
+
+        function setEmployeeComboboxExpanded(isOpen) {
+            const { comboboxEl, inputEl, menuEl } = getEmployeeComboboxElements();
+            if (!comboboxEl || !inputEl || !menuEl) return;
+
+            comboboxEl.classList.toggle('open', isOpen);
+            inputEl.setAttribute('aria-expanded', isOpen ? 'true' : 'false');
+            menuEl.hidden = !isOpen;
+        }
+
+        function openEmployeeCombobox(showAll = false) {
+            if (employeeComboboxCloseTimer) {
+                clearTimeout(employeeComboboxCloseTimer);
+                employeeComboboxCloseTimer = null;
+            }
+            const { inputEl } = getEmployeeComboboxElements();
+            renderEmployeeComboboxOptions(showAll ? '' : (inputEl ? inputEl.value : ''));
+            setEmployeeComboboxExpanded(true);
+        }
+
+        function closeEmployeeCombobox() {
+            if (employeeComboboxCloseTimer) {
+                clearTimeout(employeeComboboxCloseTimer);
+                employeeComboboxCloseTimer = null;
+            }
+            setEmployeeComboboxExpanded(false);
+        }
+
+        function scheduleEmployeeComboboxClose() {
+            if (employeeComboboxCloseTimer) {
+                clearTimeout(employeeComboboxCloseTimer);
+            }
+            employeeComboboxCloseTimer = setTimeout(() => {
+                commitEmployeeComboboxInput();
+                closeEmployeeCombobox();
+            }, 120);
+        }
+
+        function updateEmployeeComboboxActiveOption() {
+            const { menuEl } = getEmployeeComboboxElements();
+            if (!menuEl) return;
+
+            Array.from(menuEl.querySelectorAll('.employee-combobox-option')).forEach((optionEl, idx) => {
+                const isActive = idx === employeeComboboxActiveIndex;
+                optionEl.classList.toggle('active', isActive);
+                optionEl.setAttribute('aria-selected', isActive ? 'true' : 'false');
+                if (isActive) optionEl.scrollIntoView({ block: 'nearest' });
+            });
+        }
+
+        function selectEmployeeComboboxOption(value) {
+            const { filterEl, inputEl } = getEmployeeComboboxElements();
+            if (!filterEl || !inputEl) return;
+
+            filterEl.value = value;
+            handleEmployeeChange();
+            renderEmployeeComboboxOptions(inputEl.value);
+            closeEmployeeCombobox();
+        }
+
+        function handleEmployeeComboboxInput() {
+            const { inputEl, filterEl } = getEmployeeComboboxElements();
+            if (!inputEl || !filterEl) return;
+
+            openEmployeeCombobox(false);
+            renderEmployeeComboboxOptions(inputEl.value);
+
+            const query = inputEl.value.trim().toLowerCase();
+            if (!query) return;
+
+            const exactMatch = getSelectableEmployees().find(employee => employee.name.toLowerCase() === query);
+            if (!exactMatch) return;
+
+            filterEl.value = exactMatch.value;
+            handleEmployeeChange();
+        }
+
+        function commitEmployeeComboboxInput() {
+            const { inputEl, filterEl } = getEmployeeComboboxElements();
+            if (!inputEl || !filterEl) return;
+
+            const query = inputEl.value.trim().toLowerCase();
+            if (!query) {
+                syncEmployeeInput(filterEl.value);
+                return;
+            }
+
+            const exactMatch = getSelectableEmployees().find(employee => employee.name.toLowerCase() === query);
+            const partialMatch = getSelectableEmployees().find(employee => employee.name.toLowerCase().includes(query));
+            const match = exactMatch || partialMatch;
+
+            if (!match) {
+                syncEmployeeInput(filterEl.value);
+                return;
+            }
+
+            filterEl.value = match.value;
+            handleEmployeeChange();
+        }
+
+        function handleEmployeeComboboxKeydown(event) {
+            if (!['ArrowDown', 'ArrowUp', 'Enter', 'Escape'].includes(event.key)) return;
+
+            if (event.key === 'Escape') {
+                event.preventDefault();
+                syncEmployeeInput(document.getElementById('employee-filter')?.value || '');
+                closeEmployeeCombobox();
+                return;
+            }
+
+            if (event.key === 'ArrowDown' || event.key === 'ArrowUp') {
+                event.preventDefault();
+                if (!document.getElementById('employee-combobox')?.classList.contains('open')) {
+                    openEmployeeCombobox(true);
+                    return;
+                }
+                if (!employeeComboboxMatches.length) return;
+
+                const direction = event.key === 'ArrowDown' ? 1 : -1;
+                employeeComboboxActiveIndex = (employeeComboboxActiveIndex + direction + employeeComboboxMatches.length) % employeeComboboxMatches.length;
+                updateEmployeeComboboxActiveOption();
+                return;
+            }
+
+            if (event.key === 'Enter') {
+                event.preventDefault();
+                if (employeeComboboxMatches.length && employeeComboboxActiveIndex >= 0) {
+                    selectEmployeeComboboxOption(employeeComboboxMatches[employeeComboboxActiveIndex].value);
+                } else {
+                    commitEmployeeComboboxInput();
+                    closeEmployeeCombobox();
+                }
+            }
+        }
+
+        function toggleEmployeeCombobox() {
+            const comboboxEl = document.getElementById('employee-combobox');
+            const inputEl = document.getElementById('employee-filter-input');
+            if (!comboboxEl || !inputEl) return;
+
+            if (comboboxEl.classList.contains('open')) {
+                closeEmployeeCombobox();
+                return;
+            }
+
+            inputEl.focus();
+            openEmployeeCombobox(true);
+        }
+
+        function splitExperienceEntries(value) {
+            const normalized = String(value || '').replace(/\r?\n/g, '|');
+            const entries = [];
+            let current = '';
+            let depth = 0;
+
+            for (const char of normalized) {
+                if (char === '(') depth += 1;
+                if (char === ')' && depth > 0) depth -= 1;
+
+                if ((char === '|' || char === ',') && depth === 0) {
+                    if (current.trim()) entries.push(current.trim());
+                    current = '';
+                    continue;
+                }
+
+                current += char;
+            }
+
+            if (current.trim()) entries.push(current.trim());
+            return entries;
+        }
+
+        function formatDisplayDate(value) {
+            if (value === undefined || value === null) return '-';
+            const raw = String(value).trim();
+            if (!raw || raw === '-') return '-';
+
+            if (/^\d{5,}$/.test(raw)) {
+                const serial = Number(raw);
+                const parsed = typeof XLSX !== 'undefined' && XLSX.SSF && XLSX.SSF.parse_date_code
+                    ? XLSX.SSF.parse_date_code(serial)
+                    : null;
+                if (parsed) {
+                    const mm = String(parsed.m).padStart(2, '0');
+                    const dd = String(parsed.d).padStart(2, '0');
+                    const yyyy = String(parsed.y);
+                    return `${mm}-${dd}-${yyyy}`;
+                }
+            }
+
+            const match = raw.match(/^(\d{1,2})[\/-](\d{1,2})[\/-](\d{2,4})$/);
+            if (match) {
+                const mm = String(match[1]).padStart(2, '0');
+                const dd = String(match[2]).padStart(2, '0');
+                const yyyy = match[3].length === 2 ? `20${match[3]}` : match[3];
+                return `${mm}-${dd}-${yyyy}`;
+            }
+
+            const parsedDate = new Date(raw);
+            if (!Number.isNaN(parsedDate.getTime())) {
+                const mm = String(parsedDate.getMonth() + 1).padStart(2, '0');
+                const dd = String(parsedDate.getDate()).padStart(2, '0');
+                const yyyy = String(parsedDate.getFullYear());
+                return `${mm}-${dd}-${yyyy}`;
+            }
+
+            return raw;
+        }
+
+        function renderExperienceList(ulEl, value) {
+            if (!value || String(value).trim() === '') {
+                ulEl.innerHTML = '<li>-</li>';
+                return;
+            }
+            const entries = splitExperienceEntries(value);
+            let html = '';
+
+            for (const entry of entries) {
+                const trailingDateMatch = entry.match(/^(.*?)\s*\(([^()]*?(?:19|20)\d{2}[^()]*)\)\s*$/);
+                if (trailingDateMatch) {
+                    const role = trailingDateMatch[1].trim();
+                    const date = trailingDateMatch[2].trim();
+                    html += `<li>${escapeHtml(role)}<span style="display: block; font-size: 8.5px; color: #94A3B8; margin-top: 2px; font-weight: 400;">${escapeHtml(date)}</span></li>`;
+                    continue;
+                }
+
+                if (/(19|20)\d{2}/.test(entry) && entry.length <= 35 && html !== '') {
+                    html = html.replace(/<\/li>$/, `<span style="display: block; font-size: 8.5px; color: #94A3B8; margin-top: 2px; font-weight: 400;">${escapeHtml(entry)}</span></li>`);
+                    continue;
+                }
+
+                html += `<li>${escapeHtml(entry)}</li>`;
+            }
+
+            ulEl.innerHTML = html || '<li>-</li>';
+        }
+
+        // --- Data Extraction & File Uploads ---
+        function getSheet(workbook, sheetName) {
+            const target = sheetName.trim().toLowerCase();
+            const actualName = workbook.SheetNames.find(n => n.trim().toLowerCase() === target);
+            return actualName ? workbook.Sheets[actualName] : null;
+        }
+
+        function uint8ToBase64(bytes) {
+            let binary = '';
+            const chunk = 8192;
+            for (let i = 0; i < bytes.length; i += chunk) {
+                binary += String.fromCharCode(...bytes.subarray(i, i + chunk));
+            }
+            return btoa(binary);
+        }
+
+        async function extractLogosFromZip(arrayBuffer) {
+            if (typeof JSZip === 'undefined') return;
+            try {
+                const zip = await JSZip.loadAsync(arrayBuffer);
+
+                // 1. Locate LOGO sheet path via workbook.xml + rels
+                const wbXml = await zip.file('xl/workbook.xml').async('text');
+                const sheetEntries = [...wbXml.matchAll(/name="([^"]+)"[^>]*r:id="(rId\d+)"/g)];
+                const logoEntry = sheetEntries.find(m => m[1].toLowerCase() === 'logo');
+                if (!logoEntry) return;
+
+                const wbRelsXml = await zip.file('xl/_rels/workbook.xml.rels').async('text');
+                const pathMatch = wbRelsXml.match(new RegExp(`Id="${logoEntry[2]}"[^>]+Target="([^"]+)"`));
+                if (!pathMatch) return;
+                const sheetPath = 'xl/' + pathMatch[1];
+
+                // 2. Shared strings → BU names
+                const ssXml = await zip.file('xl/sharedStrings.xml').async('text');
+                const sharedStrings = [...ssXml.matchAll(/<si>([\s\S]*?)<\/si>/g)]
+                    .map(m => m[1].replace(/<[^>]+>/g, '').replace(/\s+/g, ' ').trim());
+
+                // 3. Parse LOGO sheet: column A = BU name (shared string), column B vm = rich value index
+                const logoXml = await zip.file(sheetPath).async('text');
+                const buToVm = {};
+                for (const rowMatch of logoXml.matchAll(/<row r="(\d+)"[^>]*>([\s\S]*?)<\/row>/g)) {
+                    if (parseInt(rowMatch[1]) === 1) continue; // skip header row
+                    const aMatch = rowMatch[2].match(/<c r="A\d+"[^>]*t="s"[^>]*><v>(\d+)<\/v>/);
+                    const bMatch = rowMatch[2].match(/<c r="B\d+"[^>]*vm="(\d+)"/);
+                    if (aMatch && bMatch) {
+                        const buName = sharedStrings[parseInt(aMatch[1])];
+                        if (buName) buToVm[buName] = parseInt(bMatch[1]);
+                    }
+                }
+                if (!Object.keys(buToVm).length) return;
+
+                // 4. Build vm → image file via richData
+                //    richValueRel.xml:      ordered list of rIds (position = LocalImageIdentifier)
+                //    richValueRel.xml.rels: rId → image filename
+                //    rdrichvalue.xml:       rv[i].firstV = LocalImageIdentifier → vm = i+1
+                const rvRelXml = await zip.file('xl/richData/richValueRel.xml').async('text');
+                const orderedRIds = [...rvRelXml.matchAll(/r:id="(rId\d+)"/g)].map(m => m[1]);
+
+                const rvRelsXml = await zip.file('xl/richData/_rels/richValueRel.xml.rels').async('text');
+                const rIdToImg = {};
+                [...rvRelsXml.matchAll(/Id="(rId\d+)"[^>]+Target="[^"]*\/(image[^"]+)"/g)]
+                    .forEach(m => { rIdToImg[m[1]] = m[2]; });
+
+                const rvXml = await zip.file('xl/richData/rdrichvalue.xml').async('text');
+                const vmToImg = {};
+                [...rvXml.matchAll(/<rv[^>]*><v>(\d+)<\/v>/g)].forEach((m, i) => {
+                    const rId = orderedRIds[parseInt(m[1])];
+                    if (rId && rIdToImg[rId]) vmToImg[i + 1] = rIdToImg[rId];
+                });
+
+                // 5. Load each image and store as data URL keyed by BU name
+                for (const [buName, vmIdx] of Object.entries(buToVm)) {
+                    const imgFile = vmToImg[vmIdx];
+                    if (!imgFile) continue;
+                    const imgEntry = zip.file(`xl/media/${imgFile}`);
+                    if (!imgEntry) continue;
+                    const imgBytes = await imgEntry.async('uint8array');
+                    const ext = imgFile.split('.').pop().toLowerCase();
+                    const mime = (ext === 'jpg' || ext === 'jpeg') ? 'image/jpeg' : `image/${ext}`;
+                    const dataUrl = `data:${mime};base64,${uint8ToBase64(imgBytes)}`;
+                    const key = buName.toLowerCase().trim();
+                    window.companyLogoData[key] = dataUrl;
+                    window.companyLogoData[key.replace(/\s+/g, '')] = dataUrl;
+                }
+            } catch (err) {
+                console.warn('[Logo] Extraction failed, falling back to filenames:', err.message);
+            }
+        }
+
+        function parseLogoSheet(workbook) {
+            const logoSheet = getSheet(workbook, "Logo");
+            if (!logoSheet) return;
+
+            const rows = XLSX.utils.sheet_to_json(logoSheet, { defval: '' });
+            // !images is available in SheetJS Pro; silently absent in community edition
+            const images = logoSheet['!images'];
+
+            rows.forEach((row, idx) => {
+                const buName = String(
+                    row['Business Unit'] || row['Company Name'] || row['Name'] ||
+                    Object.values(row).find(v => String(v).trim()) || ''
+                ).trim();
+                if (!buName) return;
+
+                const key = buName.toLowerCase().trim();
+
+                if (images && images[idx]) {
+                    try {
+                        const imgEntry = images[idx];
+                        const rawData = imgEntry.data || imgEntry.Data;
+                        if (rawData) {
+                            const base64 = typeof rawData === 'string' ? rawData
+                                : btoa(String.fromCharCode(...new Uint8Array(rawData)));
+                            const ext = String(imgEntry.type || imgEntry.Type || 'png').toLowerCase();
+                            const mime = (ext === 'jpg' || ext === 'jpeg') ? 'image/jpeg' : `image/${ext}`;
+                            window.companyLogoData[key] = `data:${mime};base64,${base64}`;
+                            window.companyLogoData[key.replace(/\s+/g, '')] = window.companyLogoData[key];
+                        }
+                    } catch (e) { /* image extraction not supported in community edition */ }
+                }
+            });
+        }
+
+        function getEmployeeRowsFromWorksheet(worksheet) {
+            const range = XLSX.utils.decode_range(worksheet['!ref'] || "A1:Z1");
+            let headerRow = range.s.r;
+
+            for (let r = range.s.r; r <= Math.min(range.s.r + 8, range.e.r); r++) {
+                const cellAddr = XLSX.utils.encode_cell({ r, c: 0 });
+                const cell = worksheet[cellAddr];
+                if (cell && String(cell.v).trim() === "Name") {
+                    headerRow = r;
+                    break;
+                }
+            }
+            const rows = XLSX.utils.sheet_to_json(worksheet, { range: headerRow, defval: '' });
+            return rows.filter(row => {
+                const name = String(row["Name"] || "").trim();
+                const normalizedName = name.normalize('NFKD').replace(/[^\x20-\x7E]/g, '').trim();
+                return normalizedName && normalizedName !== "REQUIRED" && normalizedName !== "Free text" && !normalizedName.startsWith("REQUIRED");
+            });
+        }
+
+        function firstImportValue(row, keys) {
+            const rowKeys = Object.keys(row);
+            for (const key of keys) {
+                if (row[key] !== undefined && row[key] !== null && String(row[key]).trim() !== '') {
+                    return String(row[key]).trim();
+                }
+                const looseKey = rowKeys.find(k => k.trim().toLowerCase() === key.trim().toLowerCase());
+                if (looseKey && row[looseKey] !== undefined && row[looseKey] !== null && String(row[looseKey]).trim() !== '') {
+                    return String(row[looseKey]).trim();
+                }
+            }
+            return '';
+        }
+
+        function setImportAlias(row, target, keys) {
+            if (row[target] !== undefined && row[target] !== null && String(row[target]).trim() !== '') return;
+            const value = firstImportValue(row, keys);
+            if (value) row[target] = value;
+        }
+
+        function normalizeEmployeeRow(row) {
+            const normalized = { ...row };
+            
+            const formatExp = (v) => v ? String(v).replace(/yrs|years/i, '').trim() + ' Yrs' : '-';
+
+            const currentRoleExp = firstImportValue(normalized, ["Exp in Current Role"]);
+            const currentOrgExp = firstImportValue(normalized, ["Exp in Current Org"]);
+            const overallExp = firstImportValue(normalized, ["Exp in Current Org (Overall Exp)", "Overall Exp"]);
+
+            if (currentRoleExp) normalized["Exp in Current Role"] = formatExp(currentRoleExp);
+            if (currentOrgExp) normalized["Exp in Current Org"] = formatExp(currentOrgExp);
+            if (overallExp) normalized["Exp in Current Org (Overall Exp)"] = formatExp(overallExp);
+
+            setImportAlias(normalized, "Compensation FY 26-27", ["Compensation", "Comp FY 26-27"]);
+            setImportAlias(normalized, "Total Unvested LTIP Benefit", ["Total Unvested LTIP Benefit", "Unvested LTIP Benefit"]);
+            setImportAlias(normalized, "Last Promotion Date", ["Last Promotion Date", "Promotion Date"]);
+            setImportAlias(normalized, "Comp Trend FY 24-25", ["Comp Trend 2023", "Comp Trend FY24-25"]);
+            setImportAlias(normalized, "Comp Trend FY 25-26", ["Comp Trend 2024", "Comp Trend FY25-26"]);
+            
+            setImportAlias(normalized, "TR Rating FY 25-26", ["TR Rating", "TR Rating FY25-26"]);
+            setImportAlias(normalized, "TR Trend FY 23-24", ["TR Trend 2023", "TR Trend FY23-24"]);
+            setImportAlias(normalized, "TR Trend FY 24-25", ["TR Trend 2024", "TR Trend FY24-25"]);
+            
+            setImportAlias(normalized, "Perf 23-24 (H1)", ["Perf 23-24 (H3)", "Perf 24-25 (H1)"]);
+            
+            setImportAlias(normalized, "360 Trend 2025", ["360 Assessment", "360 Assessment 2025"]);
+            setImportAlias(normalized, "Manager Climate Score FY26-27", ["Manager Climate", "Manager Climate Score FY 26-27"]);
+            setImportAlias(normalized, "Manager Climate Score FY24-25", ["Climate Trend 2023", "Manager Climate Score FY 24-25"]);
+            setImportAlias(normalized, "Manager Climate Score FY25-26", ["Climate Trend 2024", "Manager Climate Score FY 25-26"]);
+            
+            setImportAlias(normalized, "GPTW Score 2025", ["GPTW Score"]);
+            setImportAlias(normalized, "GPTW Score 2023", ["GPTW Trend 2023"]);
+            setImportAlias(normalized, "GPTW Score 2024", ["GPTW Trend 2024"]);
+
+            return normalized;
+        }
+
+        function parseWorkbookEmployees(workbook) {
+            let baseRows = [];
+            let isSingle = false;
+
+            const empDataSheet = getSheet(workbook, "Employee Data");
+            const profileSheet = getSheet(workbook, "Profile");
+
+            if (empDataSheet) {
+                baseRows = getEmployeeRowsFromWorksheet(empDataSheet).map(normalizeEmployeeRow);
+            } else if (profileSheet) {
+                baseRows = XLSX.utils.sheet_to_json(profileSheet, { defval: '' }).map(normalizeEmployeeRow);
+                isSingle = baseRows.length <= 1;
+            } else {
+                const firstSheet = workbook.Sheets[workbook.SheetNames[0]];
+                baseRows = XLSX.utils.sheet_to_json(firstSheet, { defval: '' })
+                    .filter(row => Object.values(row).some(v => String(v).trim()))
+                    .map(normalizeEmployeeRow);
+                isSingle = baseRows.length <= 1;
+            }
+
+            if (!baseRows.length) return [];
+
+            const employeesById = new Map();
+            baseRows.forEach((row, idx) => {
+                const key = String(row["EmpID"] || row["Name"] || `row-${idx}`).trim();
+                employeesById.set(key, row);
+            });
+
+            const matchSupplementary = (sheetRows, empKey) => {
+                return sheetRows.filter(row => {
+                    if (isSingle) return true;
+                    return String(firstImportValue(row, ["EmpID", "Name"])).trim() === empKey;
+                });
+            };
+
+            const readinessSheet = getSheet(workbook, "Future Readiness");
+            if (readinessSheet) {
+                const readinessRows = XLSX.utils.sheet_to_json(readinessSheet, { defval: '' });
+                employeesById.forEach((employee, key) => {
+                    const matched = matchSupplementary(readinessRows, key);
+                    if (matched[0]) {
+                        employee["Readiness 1 - Timeline"] = matched[0]["Timeline"] || '';
+                        employee["Readiness 1 - Role"] = matched[0]["Role"] || '';
+                        employee["Readiness 1 - Desc"] = matched[0]["Description"] || '';
+                    }
+                    if (matched[1]) {
+                        employee["Readiness 2 - Timeline"] = matched[1]["Timeline"] || '';
+                        employee["Readiness 2 - Role"] = matched[1]["Role"] || '';
+                        employee["Readiness 2 - Desc"] = matched[1]["Description"] || '';
+                    }
+                });
+            }
+
+            const compSheet = getSheet(workbook, "Competency Profile");
+            if (compSheet) {
+                const compRows = XLSX.utils.sheet_to_json(compSheet, { defval: '' });
+                employeesById.forEach((employee, key) => {
+                    const matched = matchSupplementary(compRows, key);
+                    employee["Core Strengths"] = matched
+                        .filter(r => String(r["Type"] || '').trim().toLowerCase() === 'core strength')
+                        .map(r => String(r["Item"] || '').trim()).filter(Boolean).join(' | ');
+                    employee["Development Areas"] = matched
+                        .filter(r => String(r["Type"] || '').trim().toLowerCase() === 'development area')
+                        .map(r => String(r["Item"] || '').trim()).filter(Boolean).join(' | ');
+                });
+            }
+
+            const actionSheet = getSheet(workbook, "Actionable");
+            if (actionSheet) {
+                const actionRows = XLSX.utils.sheet_to_json(actionSheet, { defval: '' });
+                employeesById.forEach((employee, key) => {
+                    const matched = matchSupplementary(actionRows, key);
+                    employee["Actions Taken"] = matched
+                        .filter(r => String(r["Type"] || '').trim().toLowerCase() === 'action taken')
+                        .map(r => `${String(r["Action"] || '').trim()} :: ${String(r["Status"] || '').trim()} :: ${String(r["Remark"] || '').trim()}`)
+                        .filter(Boolean).join(' | ');
+
+                    const proposed = matched.filter(r => String(r["Type"] || '').trim().toLowerCase() === 'action proposed');
+                    employee["Proposed Actions"] = proposed
+                        .map(r => `${String(r["Action"] || '').trim()} :: ${String(r["Status"] || '').trim()} :: ${String(r["Remark"] || '').trim()}`)
+                        .filter(Boolean).join(' | ');
+                });
+            }
+
+            const succSheet = getSheet(workbook, "Potential Successors");
+            if (succSheet) {
+                const succRows = XLSX.utils.sheet_to_json(succSheet, { defval: '' });
+                employeesById.forEach((employee, key) => {
+                    const matched = matchSupplementary(succRows, key);
+                    employee["Potential Successors"] = matched
+                        .map(r => {
+                            const name = String(r["Successor Name"] || '').trim();
+                            const readiness = String(r["Readiness"] || '').trim();
+                            return name ? `${name}${readiness ? ` (${readiness})` : ''}` : '';
+                        }).filter(Boolean).join(' | ');
+                });
+            }
+
+            return Array.from(employeesById.values());
+        }
+
+        function rebuildEmployeeFilter(employees, selectedValue) {
+            populateEmployeeFilterOptions(selectedValue || '__bulk_0');
+        }
+
+        function flashDashboard(opacity, timeoutMs) {
+            document.querySelector('.dashboard-grid').style.opacity = opacity;
+            setTimeout(() => { document.querySelector('.dashboard-grid').style.opacity = '1'; }, timeoutMs);
+        }
+
+        function showLoadToast(count) {
+            const toast = document.createElement('div');
+            toast.style.cssText = "position:fixed;bottom:20px;left:50%;transform:translateX(-50%);background:#10B981;color:white;padding:10px 20px;border-radius:8px;font-size:13px;font-weight:700;z-index:9999;box-shadow:0 4px 12px rgba(0,0,0,0.15);";
+            toast.textContent = `${count} employee${count > 1 ? 's' : ''} loaded. Use the dropdown to switch between them.`;
+            document.body.appendChild(toast);
+            setTimeout(() => toast.remove(), 4000);
+        }
+
+        function importFile(event, isBulk) {
+            const file = event.target.files[0];
+            if (!file) return;
+
+            const reader = new FileReader();
+            reader.onload = async function(e) {
+                const arrayBuffer = e.target.result;
+                const data = new Uint8Array(arrayBuffer);
+                await extractLogosFromZip(arrayBuffer);
+                const workbook = XLSX.read(data, { type: 'array' });
+                parseLogoSheet(workbook);
+                const employees = parseWorkbookEmployees(workbook);
+
+                if (!employees.length) {
+                    alert("No data found in the uploaded Excel file.");
+                    event.target.value = '';
+                    return;
+                }
+
+                allEmployees = employees;
+                uploadedEmployeeData = employees[0] || null;
+                rebuildEmployeeFilter(allEmployees, '__bulk_0');
+                renderEmployee(allEmployees[0]);
+                flashDashboard(isBulk ? '0.5' : '0.6', isBulk ? 400 : 300);
+                showLoadToast(allEmployees.length);
+            };
+            reader.readAsArrayBuffer(file);
+            event.target.value = '';
+        }
+
+        function importBulkExcel(event) { importFile(event, true); }
+        function importExcel(event) { importFile(event, false); }
+
+        function renderEmployee(json) {
+            let importedName = '';
+            
+            // Explicitly force experience fields to refresh to ensure no old data remains
+            ["data-exp-role", "data-exp-sterlite", "data-exp-overall"].forEach(id => {
+                const el = document.getElementById(id);
+                if (el) el.innerText = '-';
+            });
+
+            for (const [colName, cfg] of Object.entries(fieldMapping)) {
+                const rawVal = json[colName];
+                const val = (rawVal !== undefined && rawVal !== null) ? String(rawVal).trim() : '';
+                
+                const el = document.getElementById(cfg.id);
+                if (!el) continue;
+
+                if (cfg.type === "comp") {
+                    el.setAttribute('data-value', val || '-');
+                    if (typeof compState !== 'undefined' && compState > 0) {
+                        el.textContent = val || '-';
+                        el.classList.remove('comp-hidden');
+                    } else {
+                        el.textContent = '********';
+                        el.classList.add('comp-hidden');
+                    }
+                } else if (cfg.type === "ltip") {
+                    el.setAttribute('data-value', val || '-');
+                    if (typeof ltipState !== 'undefined' && ltipState > 0) {
+                        el.textContent = val || '-';
+                        el.classList.remove('comp-hidden');
+                    } else {
+                        el.textContent = '********';
+                        el.classList.add('comp-hidden');
+                    }
+                } else if (colName === "Last Promotion Date") {
+                    el.innerText = formatDisplayDate(val);
+                } else if (cfg.type === "bu") {
+                    const cleanVal = val.trim();
+                    el.innerText = cleanVal || '-';
+                    updateLogo(cleanVal);
+                } else if (cfg.type === "climate_val") {
+                    el.innerText = val || '-';
+                } else if (cfg.type === "list") {
+                    if (!val) {
+                        el.innerHTML = '<li>-</li>';
+                    } else {
+                        const items = val.split(/\r?\n|\|/).map(s => s.trim()).filter(Boolean);
+                        el.innerHTML = items.map(item => `<li>${item}</li>`).join('');
+                    }
+                } else if (cfg.type === "experience_list") {
+                    renderExperienceList(el, val);
+                } else if (cfg.type === "actions_table") {
+                    el.innerHTML = buildActionsTableRows(val, true);
+                } else if (cfg.type === "proposed_actions_table") {
+                    el.innerHTML = buildActionsTableRows(val, false);
+                } else if (cfg.type === "successors_table") {
+                    if (!val) {
+                        el.innerHTML = '<tr><td colspan="2" style="text-align:center">-</td></tr>';
+                    } else {
+                        const rows = val.split('|').map(s => s.trim()).filter(Boolean);
+                        el.innerHTML = rows.map(row => {
+                            const match = row.match(/^(.+?)\s*\(([^)]+)\)\s*$/);
+                            const name = match ? match[1].trim() : row;
+                            const readiness = match ? match[2].trim() : '';
+                            return `<tr>
+                                <td>${name}</td>
+                                <td style="text-align: right;"><span class="succ-readiness">${readiness}</span></td>
+                            </tr>`;
+                        }).join('');
+                    }
+                } else if (cfg.type === "readiness_desc") {
+                    if(!val || val === '-') {
+                        el.style.display = 'none';
+                    } else {
+                        el.style.display = 'block';
+                        el.innerText = val;
+                    }
+                } else {
+                    el.innerText = val || '-';
+                    if (colName === "Name" && val && val !== '-') importedName = val;
+                }
+            }
+            setEmployeeAvatar(importedName || document.getElementById('data-name')?.innerText || '');
+            updateVisualsAfterImport();
+        }
+
+        function updateVisualsAfterImport() {
+            const updateBar = (valId, barId, max = 5.0) => {
+                const el = document.getElementById(valId);
+                if (!el) return;
+                const val = parseFloat(el.innerText) || 0;
+                const bar = document.getElementById(barId);
+                if (bar) bar.style.width = ((val / max) * 100) + "%";
+            };
+
+            updateBar("data-perf-1", "bar-perf-1");
+            updateBar("data-perf-2", "bar-perf-2");
+            updateBar("data-perf-3", "bar-perf-3");
+            updateBar("data-360",    "bar-360");
+            updateBar("data-gptw",   "bar-gptw", 100);
+
+            const climateEl   = document.getElementById("data-climate");
+            const climateBar  = document.getElementById("bar-climate");
+            const climateLabel = document.getElementById("label-climate");
+
+            if (climateEl && climateBar && climateLabel) {
+                let climateVal = parseFloat(climateEl.innerText) || 0;
+                if(climateEl.innerText === '-') climateVal = 0;
+                
+                const climatePct = ((climateVal / 5.0) * 100);
+                climateBar.style.width  = climatePct + "%";
+                climateBar.className    = "prog-fill";
+                climateLabel.className  = "val";
+
+                if (climateVal >= 4.0) {
+                    climateBar.classList.add("green");
+                } else if (climateVal >= 3.0) {
+                    climateBar.classList.add("amber");
+                } else {
+                    climateBar.classList.add("red");
+                }
+                climateLabel.innerHTML = climateEl.innerText === '-' ? '-' : `(<span id="data-climate">${climateEl.innerText}</span>)`;
+            }
+
+            const updatePill = (id) => {
+                const el = document.getElementById(id);
+                if (!el) return;
+                const text = el.innerText.trim().toUpperCase();
+                const isRiskField = id === "data-risk-loss" || id === "data-risk-impact";
+                el.className = "pill";
+                if      (text === "LOW")    el.classList.add(isRiskField ? "high" : "low");
+                else if (text === "HIGH")   el.classList.add("high");
+                else if (text === "YES")    el.classList.add(id === "data-risk-relocate" ? "low" : "yes");
+                else if (text === "NO")     el.classList.add(id === "data-risk-relocate" ? "high" : "low");
+                else if (text === "MEDIUM") el.classList.add("amber");
+                else                        el.classList.add("low");
+            };
+
+            updatePill("data-risk-loss");
+            updatePill("data-risk-impact");
+            updatePill("data-risk-relocate");
+            
+            const r1Role = document.getElementById("data-readiness1-role");
+            const r1Box = document.getElementById("readiness-box-1");
+            if(r1Role && r1Box) {
+                if(!r1Role.innerText || r1Role.innerText === '-') r1Box.style.display = 'none';
+                else r1Box.style.display = 'block';
+            }
+
+            const r2Role = document.getElementById("data-readiness2-role");
+            const r2Box = document.getElementById("readiness-box-2");
+            if(r2Role && r2Box) {
+                if(!r2Role.innerText || r2Role.innerText === '-') r2Box.style.display = 'none';
+                else r2Box.style.display = 'block';
+            }
+
+            const readinessCard = document.getElementById("future-readiness-card");
+            if (readinessCard && r1Box && r2Box) {
+                const hasReadiness1 = r1Box.style.display !== 'none';
+                const hasReadiness2 = r2Box.style.display !== 'none';
+                readinessCard.style.display = (hasReadiness1 || hasReadiness2) ? 'flex' : 'none';
+            }
+
+            // Sync Current Data to 3rd Trend node natively
+            const syncTrend = (srcId, tgtId, isComp = false, suffix = '') => {
+                const src = document.getElementById(srcId);
+                const tgt = document.getElementById(tgtId);
+                if (src && tgt) {
+                    if (isComp) {
+                        const val = src.getAttribute('data-value');
+                        tgt.innerText = val && val !== '-' ? val : '-';
+                    } else {
+                        let val = src.innerText.trim();
+                        tgt.innerText = val && val !== '-' ? val + suffix : '-';
+                    }
+                }
+            };
+            syncTrend("comp-display", "data-comp-trend-3", true);
+            syncTrend("data-tr", "data-tr-trend-3");
+            syncTrend("data-360", "data-360-trend-3");
+            syncTrend("data-climate", "data-climate-trend-3");
+            syncTrend("data-gptw", "data-gptw-trend-3");
+            updatePreviousCycleTopTalent();
+        }
+
+        // --- Export Functions ---
+        function exportExcel() {
+            const wb = XLSX.utils.book_new();
+            const txt = (id) => { const el = document.getElementById(id); return el && el.innerText !== '-' ? el.innerText.trim() : ''; };
+            const autoCol = (keys) => keys.map(k => ({ wch: Math.max(k.length, 14) + 2 }));
+
+            const profileRow = {};
+            const profileKeys = [
+                "EmpID","Name","Title","Business Unit","Grade","Manager","Location",
+                "Exp in Current Role","Exp in Current Org","Exp in Current Org (Overall Exp)",
+                "Current Experience","Previous Experience","Function",
+                "Compensation FY 26-27","Total Unvested LTIP Benefit","Last Promotion Date","Comp Trend FY 24-25","Comp Trend FY 25-26",
+                "TR Rating FY 25-26","TR Trend FY 23-24","TR Trend FY 24-25",
+                "Ability","Aspiration","Alignment",
+                "Perf 25-26 (H1)","Perf 24-25 (H2)","Perf 23-24 (H1)",
+                "Risk of Loss","Impact of Loss","Willing to Relocate",
+                "360 Trend 2025","360 Trend 2023","360 Trend 2024",
+                "Manager Climate Score FY26-27","Manager Climate Score FY24-25","Manager Climate Score FY25-26",
+                "GPTW Score 2025","GPTW Score 2023","GPTW Score 2024"
+            ];
+            
+            profileKeys.forEach(k => {
+                if (k === "EmpID") { profileRow[k] = ''; return; }
+
+                const cfg = fieldMapping[k];
+                if (!cfg) return;
+                const el = document.getElementById(cfg.id);
+                if (!el) { profileRow[k] = ''; return; }
+
+                if (cfg.type === "comp") {
+                    profileRow[k] = el.getAttribute('data-value') || '';
+                } else if (cfg.type === "experience_list") {
+                    profileRow[k] = readExperienceList(el);
+                } else {
+                    const extracted = el.innerText.trim();
+                    profileRow[k] = extracted === '-' ? '' : extracted;
+                }
+            });
+
+            const ws1 = XLSX.utils.json_to_sheet([profileRow]);
+            ws1['!cols'] = autoCol(profileKeys);
+            XLSX.utils.book_append_sheet(wb, ws1, "Profile");
+
+            const empNameVal = txt("data-name");
+
+            const readinessRows = [
+                { "Name": empNameVal, "Timeline": txt("data-readiness1-timeline"), "Role": txt("data-readiness1-role"), "Description": txt("data-readiness1-desc") },
+                { "Name": empNameVal, "Timeline": txt("data-readiness2-timeline"), "Role": txt("data-readiness2-role"), "Description": txt("data-readiness2-desc") }
+            ];
+            const ws2 = XLSX.utils.json_to_sheet(readinessRows);
+            ws2['!cols'] = [{ wch: 20 }, { wch: 24 }, { wch: 36 }, { wch: 58 }];
+            XLSX.utils.book_append_sheet(wb, ws2, "Future Readiness");
+
+            const compRows = [];
+            const strengthsEl = document.getElementById("data-strengths-list");
+            if (strengthsEl) [...strengthsEl.querySelectorAll("li")].filter(li => li.innerText !== '-').forEach(li =>
+                compRows.push({ "Name": empNameVal, "Type": "Core Strength", "Item": li.innerText.trim() })
+            );
+            const devEl = document.getElementById("data-development-list");
+            if (devEl) [...devEl.querySelectorAll("li")].filter(li => li.innerText !== '-').forEach(li =>
+                compRows.push({ "Name": empNameVal, "Type": "Development Area", "Item": li.innerText.trim() })
+            );
+            const ws3 = XLSX.utils.json_to_sheet(compRows);
+            ws3['!cols'] = [{ wch: 20 }, { wch: 20 }, { wch: 50 }];
+            XLSX.utils.book_append_sheet(wb, ws3, "Competency Profile");
+
+            const actionRows = [];
+            const takenTbody = document.getElementById("data-actions-taken-tbody");
+            if (takenTbody) [...takenTbody.querySelectorAll("tr")].forEach(row => {
+                const cells = row.querySelectorAll("td");
+                if (cells.length >= 3 && cells[0].innerText !== '-') {
+                    const actionText = cells[0].querySelector("span:last-child")?.innerText?.trim() || cells[0].innerText.trim();
+                    actionRows.push({ "Name": empNameVal, "Type": "Action Taken", "Action": actionText, "Status": cells[1].innerText.trim(), "Remark": cells[2].innerText.trim() });
+                }
+            });
+            const proposedTbody = document.getElementById("data-actions-proposed-tbody");
+            if (proposedTbody) [...proposedTbody.querySelectorAll("tr")].forEach(row => {
+                const cells = row.querySelectorAll("td");
+                if (cells.length >= 2 && cells[0].innerText !== '-') {
+                    const actionText = cells[0].querySelector("span:last-child")?.innerText?.trim() || cells[0].innerText.trim();
+                    actionRows.push({ "Name": empNameVal, "Type": "Action Proposed", "Action": actionText, "Status": cells[1].innerText.trim(), "Remark": row.dataset.remark || "" });
+                }
+            });
+            const ws4 = XLSX.utils.json_to_sheet(actionRows);
+            ws4['!cols'] = [{ wch: 20 }, { wch: 18 }, { wch: 60 }, { wch: 18 }, { wch: 30 }];
+            XLSX.utils.book_append_sheet(wb, ws4, "Actionable");
+
+            const succRows = [];
+            const succTbody = document.getElementById("data-successors-tbody");
+            if (succTbody) [...succTbody.querySelectorAll("tr")].forEach(row => {
+                const cells = row.querySelectorAll("td");
+                if (cells.length >= 2 && cells[0].innerText !== '-')
+                    succRows.push({ "Name": empNameVal, "Successor Name": cells[0].innerText.trim(), "Readiness": cells[1].innerText.trim() });
+            });
+            const ws5 = XLSX.utils.json_to_sheet(succRows);
+            ws5['!cols'] = [{ wch: 20 }, { wch: 30 }, { wch: 20 }];
+            XLSX.utils.book_append_sheet(wb, ws5, "Potential Successors");
+
+            const empName = txt("data-name").replace(/\s+/g, "_") || "Employee";
+            XLSX.writeFile(wb, `Talent_Scorecard_${empName}.xlsx`);
+        }
+
+        async function exportBulkPdf() {
+            if (!allEmployees.length) {
+                alert("Upload an employee Excel file first, then use Bulk Download PDF.");
+                return;
+            }
+
+            if (typeof html2canvas === 'undefined' || !window.jspdf || !window.jspdf.jsPDF) {
+                alert("PDF export library could not be loaded. Please refresh the page and try again.");
+                return;
+            }
+
+            const { showCompensation, showLtip } = askExportVisibilityOptions('bulk PDF');
+
+            const exportButton = document.getElementById('bulk-pdf-btn');
+            const exportHiddenElements = getExportHiddenElements();
+            const compensationRow = document.getElementById('compensation-row');
+            if (!showCompensation && compensationRow) {
+                exportHiddenElements.push(compensationRow);
+            }
+            const ltipRow = document.getElementById('ltip-row');
+            if (!showLtip && ltipRow) {
+                exportHiddenElements.push(ltipRow);
+            }
+            const filterEl = document.getElementById('employee-filter');
+            const currentFilterValue = filterEl ? filterEl.value : '';
+            const currentCompState = compState;
+            const currentLtipState = ltipState;
+            const { jsPDF } = window.jspdf;
+            const pdf = { jsPDF, instance: null };
+
+            if (exportButton) {
+                exportButton.disabled = true;
+                exportButton.textContent = 'Preparing PDF...';
+            }
+
+            try {
+                exportHiddenElements.forEach(el => {
+                    el.dataset.exportDisplay = el.style.display || '';
+                    el.style.display = 'none';
+                });
+
+                for (let i = 0; i < allEmployees.length; i++) {
+                    renderEmployee(allEmployees[i]);
+                    if (filterEl) filterEl.value = `__bulk_${i}`;
+                    setCompensationState(showCompensation ? 2 : 0);
+                    setLtipBenefitState(showLtip ? 2 : 0);
+
+                    if (exportButton) {
+                        exportButton.textContent = `PDF ${i + 1}/${allEmployees.length}`;
+                    }
+
+                    await new Promise(resolve => requestAnimationFrame(() => requestAnimationFrame(resolve)));
+
+                    const capture = await captureDashboardImageForExport();
+                    addCaptureToPdf(pdf, capture);
+                }
+
+                if (!pdf.instance) {
+                    throw new Error('No pages were available to export.');
+                }
+
+                pdf.instance.save(`Talent_Scorecard_Bulk_${allEmployees.length}_Employees.pdf`);
+            } catch (error) {
+                console.error(error);
+                alert(`Bulk PDF download could not be completed.\n\nError: ${error && error.message ? error.message : error}`);
+            } finally {
+                restoreSelectedEmployeeView(filterEl, currentFilterValue);
+                setCompensationState(currentCompState);
+                setLtipBenefitState(currentLtipState);
+                exportHiddenElements.forEach(el => { el.style.display = el.dataset.exportDisplay || ''; delete el.dataset.exportDisplay; });
+                if (exportButton) { exportButton.disabled = false; exportButton.textContent = 'Bulk Download PDF'; }
+            }
+        }
+
+        async function exportSelectedPdf() {
+            if (typeof html2canvas === 'undefined' || !window.jspdf || !window.jspdf.jsPDF) {
+                alert("PDF export library could not be loaded. Please refresh the page and try again.");
+                return;
+            }
+
+            const exportButton = document.getElementById('single-pdf-btn');
+            const exportHiddenElements = getExportHiddenElements();
+            const currentName = (document.getElementById('data-name')?.innerText || 'Employee').trim().replace(/\s+/g, '_');
+            const { jsPDF } = window.jspdf;
+            const pdf = { jsPDF, instance: null };
+
+            if (exportButton) {
+                exportButton.disabled = true;
+                exportButton.textContent = 'Preparing PDF...';
+            }
+
+            try {
+                exportHiddenElements.forEach(el => {
+                    el.dataset.exportDisplay = el.style.display || '';
+                    el.style.display = 'none';
+                });
+
+                await new Promise(resolve => requestAnimationFrame(() => requestAnimationFrame(resolve)));
+                const capture = await captureDashboardImageForExport();
+                addCaptureToPdf(pdf, capture);
+
+                if (!pdf.instance) {
+                    throw new Error('No page was available to export.');
+                }
+
+                pdf.instance.save(`Talent_Scorecard_${currentName}.pdf`);
+            } catch (error) {
+                console.error(error);
+                alert(`Selected PDF download could not be completed.\n\nError: ${error && error.message ? error.message : error}`);
+            } finally {
+                exportHiddenElements.forEach(el => { el.style.display = el.dataset.exportDisplay || ''; delete el.dataset.exportDisplay; });
+                if (exportButton) {
+                    exportButton.disabled = false;
+                    exportButton.textContent = 'Download Selected PDF';
+                }
+            }
+        }
+
+        // Pre-load local logo PNGs as data URLs so export works before any Excel upload
+        async function preloadLocalLogos() {
+            const files = ['Sterlite.png', 'Resonia.png', 'Serentica.png'];
+            for (const file of files) {
+                const key = file.replace('.png', '').toLowerCase();
+                if (window.companyLogoData[key]) continue; // already set (e.g. from assets.js)
+                try {
+                    const resp = await fetch(file);
+                    if (!resp.ok) continue;
+                    const blob = await resp.blob();
+                    const dataUrl = await readBlobAsDataUrl(blob);
+                    if (dataUrl) {
+                        window.companyLogoData[key] = dataUrl;
+                        window.companyLogoData[key.replace(/\s+/g, '')] = dataUrl;
+                    }
+                } catch (e) { /* file not found or fetch not supported on file:// */ }
+            }
+        }
+
+        // Initialize Defaults
+        (async () => {
+            await preloadLocalLogos();
+            if (!allEmployees.length) {
+                const filterEl = document.getElementById('employee-filter');
+                if (filterEl) {
+                    populateEmployeeFilterOptions('vikram');
+                    handleEmployeeChange();
+                }
+            }
+        })();
+    </script>
+</body>
+</html>
+
+
