@@ -83,7 +83,12 @@
 
         /* --- Column 1: Profile --- */
         .profile-card { background-color: var(--primary-dark); color: white; border-radius: 8px; padding: 20px 16px; text-align: center; display: flex; flex-direction: column; flex: 1; }
-        .avatar { width: 80px; height: 80px; background-color: #94A3B8; border-radius: 50%; margin: 0 auto 10px; border: 3px solid var(--accent-gold); object-fit: cover; display: block; }
+        .avatar { width: 80px; height: 80px; background-color: #94A3B8; border-radius: 50%; margin: 0 auto 10px; border: 3px solid var(--accent-gold); display: block; overflow: hidden; cursor: pointer; position: relative; flex-shrink: 0; }
+        #employee-avatar { width: 100%; height: 100%; object-fit: cover; object-position: 50% 50%; display: block; border-radius: 0; cursor: grab; user-select: none; -webkit-user-drag: none; }
+        #employee-avatar.dragging { cursor: grabbing; }
+        #avatar-hint-overlay { position: absolute; inset: 0; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 2px; background: rgba(0,0,0,0.55); color: #fff; font-size: 11px; font-weight: 600; opacity: 0; transition: opacity 0.15s; pointer-events: none; line-height: 1.2; }
+        #avatar-hint-overlay .hint-icon { font-size: 18px; line-height: 1; }
+        .avatar:hover #avatar-hint-overlay { opacity: 1; }
         .profile-name { font-size: 18px; font-family: serif; margin-bottom: 4px; }
         .profile-title { font-size: 10px; color: var(--accent-gold); font-weight: 600; margin-bottom: 12px; text-transform: uppercase; }
         .profile-meta { text-align: left; font-size: 11px; margin-bottom: 10px; }
@@ -292,6 +297,8 @@
             .avatar {
                 width: 66px;
                 height: 66px;
+                min-width: 66px;
+                min-height: 66px;
                 margin-bottom: 8px;
             }
 
@@ -434,7 +441,11 @@
         <!-- Column 1 -->
         <div class="col">
             <div class="profile-card">
-                <img id="employee-avatar" class="avatar" alt="Employee photo">
+                <div id="avatar-wrap" class="avatar" title="Click to upload photo · Drag to reposition">
+                    <img id="employee-avatar" alt="Employee photo">
+                    <div id="avatar-hint-overlay"><span class="hint-icon">📷</span><span>Upload / Drag</span></div>
+                </div>
+                <input type="file" id="avatar-file-input" accept="image/*" style="display:none">
                 <h2 class="profile-name" id="data-name">Vikram Desai</h2>
                 <div class="profile-title" id="data-title">VP - Optical Networking Solutions</div>
                 
@@ -900,6 +911,18 @@
                 .join('') || 'NA';
         }
 
+        window.employeeImagePosition = window.employeeImagePosition || {};
+
+        function applyAvatarPosition(avatar, cleanName) {
+            const pos = window.employeeImagePosition[cleanName] || { x: 50, y: 50 };
+            avatar.style.objectPosition = `${pos.x}% ${pos.y}%`;
+        }
+
+        function getAvatarCleanName() {
+            const name = document.getElementById('data-name')?.innerText || '';
+            return name.trim().replace(/[\\/:*?"<>|]/g, '').replace(/\s+/g, ' ');
+        }
+
         function buildAvatarPlaceholder(name) {
             const initials = getEmployeeInitials(name);
             const svg = `<svg xmlns="http://www.w3.org/2000/svg" width="160" height="160" viewBox="0 0 160 160"><rect width="160" height="160" fill="#94A3B8"/><text x="50%" y="50%" dominant-baseline="middle" text-anchor="middle" fill="#FFFFFF" font-family="Inter, Arial, sans-serif" font-size="52" font-weight="700">${initials}</text></svg>`;
@@ -919,6 +942,7 @@
                 avatar.onerror = null;
                 avatar.src = embeddedEmployeeImageData[cleanName];
                 avatar.alt = `${cleanName} photo`;
+                applyAvatarPosition(avatar, cleanName);
                 return;
             }
 
@@ -927,6 +951,7 @@
                     avatar.onerror = null;
                     avatar.src = buildAvatarPlaceholder(cleanName);
                     avatar.alt = cleanName ? `${cleanName} placeholder` : 'Employee placeholder';
+                    avatar.style.objectPosition = '50% 50%';
                     return;
                 }
 
@@ -934,10 +959,81 @@
                 avatar.onerror = loadNext;
                 avatar.src = `Employee Images/${encodeURIComponent(cleanName)}.${ext}`;
                 avatar.alt = `${cleanName} photo`;
+                avatar.onload = () => applyAvatarPosition(avatar, cleanName);
             };
 
             loadNext();
         }
+
+        // --- Avatar upload + drag-to-reposition ---
+        (function initAvatarInteraction() {
+            const wrap = document.getElementById('avatar-wrap');
+            const avatar = document.getElementById('employee-avatar');
+            const fileInput = document.getElementById('avatar-file-input');
+            if (!wrap || !avatar || !fileInput) return;
+
+            // Upload on click (only if not a drag)
+            let dragMoved = false;
+            let dragStartX = 0, dragStartY = 0;
+            let dragBaseX = 50, dragBaseY = 50;
+            let isDragging = false;
+
+            wrap.addEventListener('mousedown', (e) => {
+                e.preventDefault();
+                dragMoved = false;
+                dragStartX = e.clientX;
+                dragStartY = e.clientY;
+                const cleanName = getAvatarCleanName();
+                const pos = window.employeeImagePosition[cleanName] || { x: 50, y: 50 };
+                dragBaseX = pos.x;
+                dragBaseY = pos.y;
+                isDragging = true;
+                avatar.classList.add('dragging');
+            });
+
+            document.addEventListener('mousemove', (e) => {
+                if (!isDragging) return;
+                const dx = e.clientX - dragStartX;
+                const dy = e.clientY - dragStartY;
+                if (Math.abs(dx) > 3 || Math.abs(dy) > 3) dragMoved = true;
+                if (!dragMoved) return;
+                const cleanName = getAvatarCleanName();
+                // 1px of drag moves ~0.5% of objectPosition (feels natural at 80px circle)
+                const newX = Math.max(0, Math.min(100, dragBaseX - dx * 0.5));
+                const newY = Math.max(0, Math.min(100, dragBaseY - dy * 0.5));
+                window.employeeImagePosition[cleanName] = { x: newX, y: newY };
+                avatar.style.objectPosition = `${newX}% ${newY}%`;
+            });
+
+            document.addEventListener('mouseup', () => {
+                if (!isDragging) return;
+                isDragging = false;
+                avatar.classList.remove('dragging');
+                if (!dragMoved) {
+                    // treat as click → open file picker
+                    fileInput.click();
+                }
+            });
+
+            fileInput.addEventListener('change', () => {
+                const file = fileInput.files[0];
+                if (!file) return;
+                const reader = new FileReader();
+                reader.onload = (ev) => {
+                    const dataUrl = String(ev.target.result || '');
+                    if (!dataUrl) return;
+                    const cleanName = getAvatarCleanName();
+                    window.employeeImageData[cleanName] = dataUrl;
+                    window.employeeImagePosition[cleanName] = { x: 50, y: 50 };
+                    avatar.onerror = null;
+                    avatar.src = dataUrl;
+                    avatar.alt = cleanName + ' photo';
+                    avatar.style.objectPosition = '50% 50%';
+                };
+                reader.readAsDataURL(file);
+                fileInput.value = '';
+            });
+        })();
 
         async function readBlobAsDataUrl(blob) {
             return await new Promise((resolve, reject) => {
