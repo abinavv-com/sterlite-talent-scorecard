@@ -998,9 +998,21 @@
                 if (Math.abs(dx) > 3 || Math.abs(dy) > 3) dragMoved = true;
                 if (!dragMoved) return;
                 const cleanName = getAvatarCleanName();
-                // 1px of drag moves ~0.5% of objectPosition (feels natural at 80px circle)
-                const newX = Math.max(0, Math.min(100, dragBaseX - dx * 0.5));
-                const newY = Math.max(0, Math.min(100, dragBaseY - dy * 0.5));
+
+                // Convert pixel drag to objectPosition % using actual image overflow.
+                // overflow = (naturalSize * coverScale) - containerSize
+                // 1px drag = 100/overflow % change, so dragging feels 1:1 with image movement.
+                const W = avatar.naturalWidth, H = avatar.naturalHeight;
+                const rect = wrap.getBoundingClientRect();
+                const w = rect.width || 80, h = rect.height || 80;
+                let newX = dragBaseX, newY = dragBaseY;
+                if (W > 0 && H > 0) {
+                    const scale = Math.max(w / W, h / H);
+                    const ox = W * scale - w;
+                    const oy = H * scale - h;
+                    if (ox > 0.5) newX = Math.max(0, Math.min(100, dragBaseX - dx * 100 / ox));
+                    if (oy > 0.5) newY = Math.max(0, Math.min(100, dragBaseY - dy * 100 / oy));
+                }
                 window.employeeImagePosition[cleanName] = { x: newX, y: newY };
                 avatar.style.objectPosition = `${newX}% ${newY}%`;
             });
