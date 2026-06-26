@@ -1382,7 +1382,15 @@
                     }
 
                     await new Promise(resolve => requestAnimationFrame(() => requestAnimationFrame(resolve)));
-                    const capture = await captureDashboardImageForExport();
+
+                    const logoInfo = getLogoExportInfo(slideWidth, slideHeight);
+                    const hiddenLogo = hideLogoForCapture();
+                    let capture;
+                    try {
+                        capture = await captureDashboardImageForExport();
+                    } finally {
+                        restoreLogoAfterCapture(hiddenLogo);
+                    }
 
                     if (!pptx) {
                         pptx = new PptxGenJS();
@@ -1398,6 +1406,7 @@
                     const slide = pptx.addSlide();
                     slide.background = { color: 'EAEFF4' };
                     slide.addImage({ data: capture.dataUrl, x: 0, y: 0, w: slideWidth, h: slideHeight });
+                    addLogoToSlide(slide, logoInfo);
                 }
 
                 if (!pptx) {
@@ -1963,71 +1972,105 @@
             try {
                 const zip = await JSZip.loadAsync(arrayBuffer);
 
-                // 1. Locate LOGO sheet path via workbook.xml + rels
+                // 1. Workbook sheet index + rels
                 const wbXml = await zip.file('xl/workbook.xml').async('text');
                 const sheetEntries = [...wbXml.matchAll(/name="([^"]+)"[^>]*r:id="(rId\d+)"/g)];
-                const logoEntry = sheetEntries.find(m => m[1].toLowerCase() === 'logo');
-                if (!logoEntry) return;
-
                 const wbRelsXml = await zip.file('xl/_rels/workbook.xml.rels').async('text');
-                const pathMatch = wbRelsXml.match(new RegExp(`Id="${logoEntry[2]}"[^>]+Target="([^"]+)"`));
-                if (!pathMatch) return;
-                const sheetPath = 'xl/' + pathMatch[1];
 
-                // 2. Shared strings → BU names
+                const getSheetXml = async (name) => {
+                    const entry = sheetEntries.find(m => m[1].toLowerCase() === name.toLowerCase());
+                    if (!entry) return null;
+                    const m = wbRelsXml.match(new RegExp(`Id="${entry[2]}"[^>]+Target="([^"]+)"`));
+                    if (!m) return null;
+                    const f = zip.file('xl/' + m[1]);
+                    return f ? f.async('text') : null;
+                };
+
+                // 2. Shared strings
                 const ssXml = await zip.file('xl/sharedStrings.xml').async('text');
                 const sharedStrings = [...ssXml.matchAll(/<si>([\s\S]*?)<\/si>/g)]
                     .map(m => m[1].replace(/<[^>]+>/g, '').replace(/\s+/g, ' ').trim());
 
-                // 3. Parse LOGO sheet: column A = BU name (shared string), column B vm = rich value index
-                const logoXml = await zip.file(sheetPath).async('text');
-                const buToVm = {};
-                for (const rowMatch of logoXml.matchAll(/<row r="(\d+)"[^>]*>([\s\S]*?)<\/row>/g)) {
-                    if (parseInt(rowMatch[1]) === 1) continue; // skip header row
-                    const aMatch = rowMatch[2].match(/<c r="A\d+"[^>]*t="s"[^>]*><v>(\d+)<\/v>/);
-                    const bMatch = rowMatch[2].match(/<c r="B\d+"[^>]*vm="(\d+)"/);
-                    if (aMatch && bMatch) {
-                        const buName = sharedStrings[parseInt(aMatch[1])];
-                        if (buName) buToVm[buName] = parseInt(bMatch[1]);
-                    }
-                }
-                if (!Object.keys(buToVm).length) return;
-
-                // 4. Build vm → image file via richData
-                //    richValueRel.xml:      ordered list of rIds (position = LocalImageIdentifier)
-                //    richValueRel.xml.rels: rId → image filename
-                //    rdrichvalue.xml:       rv[i].firstV = LocalImageIdentifier → vm = i+1
-                const rvRelXml = await zip.file('xl/richData/richValueRel.xml').async('text');
-                const orderedRIds = [...rvRelXml.matchAll(/r:id="(rId\d+)"/g)].map(m => m[1]);
-
-                const rvRelsXml = await zip.file('xl/richData/_rels/richValueRel.xml.rels').async('text');
-                const rIdToImg = {};
-                [...rvRelsXml.matchAll(/Id="(rId\d+)"[^>]+Target="[^"]*\/(image[^"]+)"/g)]
-                    .forEach(m => { rIdToImg[m[1]] = m[2]; });
-
-                const rvXml = await zip.file('xl/richData/rdrichvalue.xml').async('text');
+                // 3. Build vm → image filename from richData (gracefully absent in older workbooks)
                 const vmToImg = {};
-                [...rvXml.matchAll(/<rv[^>]*><v>(\d+)<\/v>/g)].forEach((m, i) => {
-                    const rId = orderedRIds[parseInt(m[1])];
-                    if (rId && rIdToImg[rId]) vmToImg[i + 1] = rIdToImg[rId];
-                });
+                try {
+                    const rvRelXml = await zip.file('xl/richData/richValueRel.xml').async('text');
+                    const orderedRIds = [...rvRelXml.matchAll(/r:id="(rId\d+)"/g)].map(m => m[1]);
+                    const rvRelsXml = await zip.file('xl/richData/_rels/richValueRel.xml.rels').async('text');
+                    const rIdToImg = {};
+                    [...rvRelsXml.matchAll(/Id="(rId\d+)"[^>]+Target="[^"]*\/(image[^"]+)"/g)]
+                        .forEach(m => { rIdToImg[m[1]] = m[2]; });
+                    const rvXml = await zip.file('xl/richData/rdrichvalue.xml').async('text');
+                    [...rvXml.matchAll(/<rv[^>]*><v>(\d+)<\/v>/g)].forEach((m, i) => {
+                        const rId = orderedRIds[parseInt(m[1])];
+                        if (rId && rIdToImg[rId]) vmToImg[i + 1] = rIdToImg[rId];
+                    });
+                } catch (e) { /* workbook has no richData images */ }
 
-                // 5. Load each image and store as data URL keyed by BU name
-                for (const [buName, vmIdx] of Object.entries(buToVm)) {
-                    const imgFile = vmToImg[vmIdx];
-                    if (!imgFile) continue;
-                    const imgEntry = zip.file(`xl/media/${imgFile}`);
-                    if (!imgEntry) continue;
-                    const imgBytes = await imgEntry.async('uint8array');
+                // Helper: file → data URL
+                const toDataUrl = async (imgFile) => {
+                    const entry = zip.file(`xl/media/${imgFile}`);
+                    if (!entry) return null;
+                    const bytes = await entry.async('uint8array');
                     const ext = imgFile.split('.').pop().toLowerCase();
                     const mime = (ext === 'jpg' || ext === 'jpeg') ? 'image/jpeg' : `image/${ext}`;
-                    const dataUrl = `data:${mime};base64,${uint8ToBase64(imgBytes)}`;
-                    const key = buName.toLowerCase().trim();
-                    window.companyLogoData[key] = dataUrl;
-                    window.companyLogoData[key.replace(/\s+/g, '')] = dataUrl;
+                    return `data:${mime};base64,${uint8ToBase64(bytes)}`;
+                };
+
+                // 4. Extract logos: LOGO sheet col A = BU name, col B = logo vm
+                const logoXml = await getSheetXml('logo');
+                if (logoXml) {
+                    for (const [, rn, rowXml] of logoXml.matchAll(/<row r="(\d+)"[^>]*>([\s\S]*?)<\/row>/g)) {
+                        if (parseInt(rn) === 1) continue;
+                        const aM = rowXml.match(/<c r="A\d+"[^>]*t="s"[^>]*><v>(\d+)<\/v>/);
+                        const bM = rowXml.match(/<c r="B\d+"[^>]*vm="(\d+)"/);
+                        if (!aM || !bM) continue;
+                        const buName = sharedStrings[parseInt(aM[1])];
+                        const imgFile = vmToImg[parseInt(bM[1])];
+                        if (!buName || !imgFile) continue;
+                        const dataUrl = await toDataUrl(imgFile);
+                        if (!dataUrl) continue;
+                        const key = buName.toLowerCase().trim();
+                        window.companyLogoData[key] = dataUrl;
+                        window.companyLogoData[key.replace(/\s+/g, '')] = dataUrl;
+                    }
                 }
+
+                // 5. Extract employee photos: Profile sheet col B = Name, picture col = vm
+                const profileXml = await getSheetXml('profile');
+                if (profileXml) {
+                    // Discover picture column dynamically from header row
+                    let picCol = 'AN';
+                    const hdrMatch = profileXml.match(/<row r="1"[^>]*>([\s\S]*?)<\/row>/);
+                    if (hdrMatch) {
+                        for (const [, col, idx] of hdrMatch[1].matchAll(/<c r="([A-Z]+)1"[^>]*t="s"[^>]*><v>(\d+)<\/v>/g)) {
+                            const hdr = (sharedStrings[parseInt(idx)] || '').toLowerCase();
+                            if (hdr.includes('picture') || hdr.includes('photo') || hdr.includes('image')) {
+                                picCol = col;
+                                break;
+                            }
+                        }
+                    }
+                    const picRe = new RegExp(`<c r="${picCol}\\d+"[^>]*vm="(\\d+)"`);
+
+                    for (const [, rn, rowXml] of profileXml.matchAll(/<row r="(\d+)"[^>]*>([\s\S]*?)<\/row>/g)) {
+                        if (parseInt(rn) === 1) continue;
+                        const bM = rowXml.match(/<c r="B\d+"[^>]*t="s"[^>]*><v>(\d+)<\/v>/);
+                        const pM = rowXml.match(picRe);
+                        if (!bM || !pM) continue;
+                        const empName = sharedStrings[parseInt(bM[1])];
+                        const imgFile = vmToImg[parseInt(pM[1])];
+                        if (!empName || !imgFile) continue;
+                        const dataUrl = await toDataUrl(imgFile);
+                        if (!dataUrl) continue;
+                        // Keyed to match setEmployeeAvatar's cleanName logic
+                        const cleanName = empName.trim().replace(/[\\/:*?"<>|]/g, '').replace(/\s+/g, ' ');
+                        window.employeeImageData[cleanName] = dataUrl;
+                    }
+                }
+
             } catch (err) {
-                console.warn('[Logo] Extraction failed, falling back to filenames:', err.message);
+                console.warn('[Assets] Extraction failed, falling back to filenames:', err.message);
             }
         }
 
