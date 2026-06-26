@@ -428,6 +428,7 @@
             <input type="file" id="excel-upload" accept=".xlsx, .xls" style="display: none;" onchange="importExcel(event)">
             <button class="btn" id="bulk-pdf-btn" onclick="exportBulkPdf()">Bulk Download PDF</button>
             <button class="btn" id="single-pdf-btn" onclick="exportSelectedPdf()">Download Selected PDF</button>
+            <button class="btn" id="single-ppt-btn" onclick="exportSinglePpt()">Download Selected PPT</button>
             <button class="btn" id="ppt-export-btn" onclick="exportPpt()">Export PPT</button>
             <button class="btn btn-primary" id="excel-export-btn" onclick="exportExcel()">Export Excel</button>
             
@@ -2557,7 +2558,7 @@
                 climateBar.style.width  = climatePct + "%";
                 climateBar.className    = "prog-fill";
                 climateLabel.className  = "val";
-                climateLabel.innerHTML = climateEl.innerText === '-' ? '-' : `(<span id="data-climate">${climateEl.innerText}</span>)`;
+                climateLabel.innerHTML = climateEl.innerText === '-' ? '-' : `<span id="data-climate">${climateEl.innerText}</span>`;
             }
 
             const updatePill = (id) => {
