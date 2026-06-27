@@ -432,7 +432,7 @@
             <button class="btn" id="ppt-export-btn" onclick="exportPpt()">Export PPT</button>
             <button class="btn btn-primary" id="excel-export-btn" onclick="exportExcel()">Export Excel</button>
             
-            <span style="margin-left: 10px;">EXTRACT DATE: OCT 2024</span>
+            <span id="extract-date-label" style="margin-left: 10px;">EXTRACT DATE: OCT 2024</span>
             <div class="badge-review">TALENT REVIEW 2025-2026</div>
         </div>
     </header>
@@ -1255,7 +1255,7 @@
         }
 
         function getExportHiddenElements() {
-            return Array.from(document.querySelectorAll('.header-right .btn, #bulk-upload, #excel-upload, #employee-filter-group'));
+            return Array.from(document.querySelectorAll('.header-right .btn, #bulk-upload, #excel-upload, #employee-filter-group, #extract-date-label'));
         }
 
         function askExportVisibilityOptions(exportLabel) {
@@ -1320,8 +1320,11 @@
 
             const x = ((logoRect.left - bodyRect.left) / bodyRect.width) * slideWidth;
             const y = ((logoRect.top - bodyRect.top) / bodyRect.height) * slideHeight;
-            const w = (logoRect.width / bodyRect.width) * slideWidth;
-            const h = (logoRect.height / bodyRect.height) * slideHeight;
+            // Give the logo box at least 15% slide-width × 8% slide-height so small DOM
+            // containers (150×28px) don't compress the logo in the PPT.
+            // sizing:contain ensures the logo fills the box without distortion.
+            const w = Math.max((logoRect.width / bodyRect.width) * slideWidth, slideWidth * 0.15);
+            const h = Math.max((logoRect.height / bodyRect.height) * slideHeight, slideHeight * 0.08);
 
             return { dataUrl: logoDataUrl, x, y, w, h };
         }
