@@ -147,8 +147,8 @@
         .prog-labels .val.green { color: var(--accent-green); background: var(--accent-green-light); padding: 2px 6px; border-radius: 4px; font-size: 10px;}
         .prog-labels .val.red { color: var(--accent-red); background: #FEF2F2; padding: 2px 6px; border-radius: 4px; font-size: 10px;}
         
-        .prog-bg { width: 100%; height: 5px; background: #E2E8F0; border-radius: 3px; overflow: hidden;}
-        .prog-fill { height: 100%; background: #1E3A5F; border-radius: 3px; transition: width 0.4s ease;}
+        .prog-bg { width: 100%; height: 6px; background: #E2E8F0; border-radius: 3px; overflow: hidden;}
+        .prog-fill { height: 100%; background: #87CEEB; border-radius: 3px; transition: width 0.4s ease;}
         .prog-fill.amber { background: var(--accent-amber); }
         .prog-fill.green { background: var(--accent-green); }
         .prog-fill.red { background: var(--accent-red); }
@@ -158,6 +158,16 @@
         .trend-year { font-size: 8px; font-weight: 600; color: var(--text-muted); }
         .trend-val { font-size: 11px; font-weight: 700; color: var(--primary-dark); }
         .hide-trend-btn { background: #FFFFFF; border: 1px solid var(--border-color); color: var(--text-muted); font-size: 8px; font-weight: 700; padding: 2px 6px; border-radius: 4px; cursor: pointer; text-transform: uppercase; }
+
+        .legend-box { margin-top: 10px; padding-top: 8px; border-top: 1px solid var(--border-color); }
+        .legend-title { font-size: 9px; font-weight: 700; text-transform: uppercase; color: var(--text-muted); margin-bottom: 5px; }
+        .legend-row { display: flex; align-items: center; gap: 4px; margin-bottom: 3px; flex-wrap: wrap; }
+        .legend-row:last-child { margin-bottom: 0; }
+        .legend-metric { font-size: 8px; font-weight: 700; color: var(--primary-dark); width: 38px; flex-shrink: 0; }
+        .legend-chip { font-size: 7px; font-weight: 600; padding: 1px 5px; border-radius: 3px; line-height: 1.5; white-space: nowrap; }
+        .legend-chip.green { color: var(--accent-green); background: var(--accent-green-light); }
+        .legend-chip.amber { color: var(--accent-amber); background: var(--accent-amber-light); }
+        .legend-chip.red { color: var(--accent-red); background: #FEF2F2; }
 
         .gold-box .trend-container { border-top-color: rgba(192, 154, 85, 0.3); }
         .gold-box .trend-val { color: var(--accent-gold); }
@@ -622,6 +632,13 @@
                         <div class="trend-item"><span class="trend-year">2024</span><span class="trend-val" id="data-gptw-trend-2">82</span></div>
                         <div class="trend-item"><span class="trend-year">2025</span><span class="trend-val" id="data-gptw-trend-3">85</span></div>
                     </div>
+                </div>
+
+                <div class="legend-box">
+                    <div class="legend-title">Scoring Legend</div>
+                    <div class="legend-row"><span class="legend-metric">360</span><span class="legend-chip green">&ge;4.25 Strong, role-model</span><span class="legend-chip amber">4&ndash;4.24 Effective, inconsistent</span><span class="legend-chip red">&lt;4 Needs development</span></div>
+                    <div class="legend-row"><span class="legend-metric">Climate</span><span class="legend-chip green">&ge;75 Strong effectiveness</span><span class="legend-chip amber">65&ndash;74 Mixed/inconsistent</span><span class="legend-chip red">&lt;65 Needs intervention</span></div>
+                    <div class="legend-row"><span class="legend-metric">GPTW</span><span class="legend-chip green">&ge;90% Top-quartile culture</span><span class="legend-chip amber">75&ndash;89% Moderate, improve</span><span class="legend-chip red">&lt;75% Below trust threshold</span></div>
                 </div>
             </div>
         </div>
@@ -1320,11 +1337,8 @@
 
             const x = ((logoRect.left - bodyRect.left) / bodyRect.width) * slideWidth;
             const y = ((logoRect.top - bodyRect.top) / bodyRect.height) * slideHeight;
-            // Give the logo box at least 15% slide-width × 8% slide-height so small DOM
-            // containers (150×28px) don't compress the logo in the PPT.
-            // sizing:contain ensures the logo fills the box without distortion.
-            const w = Math.max((logoRect.width / bodyRect.width) * slideWidth, slideWidth * 0.15);
-            const h = Math.max((logoRect.height / bodyRect.height) * slideHeight, slideHeight * 0.08);
+            const w = (logoRect.width / bodyRect.width) * slideWidth;
+            const h = (logoRect.height / bodyRect.height) * slideHeight;
 
             return { dataUrl: logoDataUrl, x, y, w, h };
         }
@@ -2549,11 +2563,26 @@
                 if (bar) bar.style.width = ((val / max) * 100) + "%";
             };
 
+            // ponytail: thresholds per the Talent Scorecard RAG legend (360 / Manager Climate / GPTW)
+            const ragClass = (val, greenMin, amberMin) =>
+                val >= greenMin ? "green" : val >= amberMin ? "amber" : "red";
+
+            const applyRag = (barId, cls) => {
+                const bar = document.getElementById(barId);
+                if (bar) bar.className = "prog-fill" + (cls ? " " + cls : "");
+            };
+
             updateBar("data-perf-1", "bar-perf-1");
             updateBar("data-perf-2", "bar-perf-2");
             updateBar("data-perf-3", "bar-perf-3");
             updateBar("data-360",    "bar-360");
             updateBar("data-gptw",   "bar-gptw", 100);
+
+            const val360 = parseFloat(document.getElementById("data-360")?.innerText) || 0;
+            applyRag("bar-360", ragClass(val360, 4.25, 4));
+
+            const valGptw = parseFloat(document.getElementById("data-gptw")?.innerText) || 0;
+            applyRag("bar-gptw", ragClass(valGptw, 90, 75));
 
             const climateEl   = document.getElementById("data-climate");
             const climateBar  = document.getElementById("bar-climate");
@@ -2562,12 +2591,12 @@
             if (climateEl && climateBar && climateLabel) {
                 let climateVal = parseFloat(climateEl.innerText) || 0;
                 if(climateEl.innerText === '-') climateVal = 0;
-                
-                const climatePct = ((climateVal / 5.0) * 100);
+
+                const climatePct = Math.min((climateVal / 100) * 100, 100);
                 climateBar.style.width  = climatePct + "%";
-                climateBar.className    = "prog-fill";
+                climateBar.className    = "prog-fill " + ragClass(climateVal, 75, 65);
                 climateLabel.className  = "val";
-                climateLabel.innerHTML = climateEl.innerText === '-' ? '-' : `<span id="data-climate">${climateEl.innerText}</span>`;
+                climateLabel.innerHTML = `<span id="data-climate">${climateEl.innerText}</span>`;
             }
 
             const updatePill = (id) => {
