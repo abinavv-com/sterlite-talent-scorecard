@@ -159,10 +159,9 @@
         .trend-val { font-size: 11px; font-weight: 700; color: var(--primary-dark); }
         .hide-trend-btn { background: #FFFFFF; border: 1px solid var(--border-color); color: var(--text-muted); font-size: 8px; font-weight: 700; padding: 2px 6px; border-radius: 4px; cursor: pointer; text-transform: uppercase; }
 
-        .metric-legend { margin-top: 5px; padding-top: 4px; border-top: 1px dashed var(--border-color); }
-        .metric-legend-label { font-size: 7px; font-weight: 700; text-transform: uppercase; color: var(--text-muted); margin-bottom: 2px; }
-        .legend-tier { display: flex; align-items: flex-start; gap: 4px; font-size: 7px; line-height: 1.35; color: var(--text-muted); margin-top: 1px; }
-        .legend-dot { width: 6px; height: 6px; border-radius: 50%; flex-shrink: 0; margin-top: 2px; }
+        .metric-legend { display: flex; align-items: center; flex-wrap: nowrap; gap: 6px; margin-top: 4px; padding-top: 3px; border-top: 1px dashed var(--border-color); overflow: hidden; }
+        .legend-tier { display: inline-flex; align-items: center; gap: 2px; font-size: 6.5px; line-height: 1.2; color: var(--text-muted); white-space: nowrap; }
+        .legend-dot { width: 5px; height: 5px; border-radius: 50%; flex-shrink: 0; }
         .legend-dot.green { background: var(--accent-green); }
         .legend-dot.amber { background: var(--accent-amber); }
         .legend-dot.red { background: var(--accent-red); }
@@ -600,10 +599,9 @@
                         <div class="trend-item"><span class="trend-year">2025</span><span class="trend-val" id="data-360-trend-3">4.7</span></div>
                     </div>
                     <div class="metric-legend">
-                        <div class="metric-legend-label">360 Assessment Legend</div>
-                        <div class="legend-tier"><span class="legend-dot green"></span><b>&ge;4.25 Green</b> &mdash; 85% of max scale; role-model leadership behaviours</div>
-                        <div class="legend-tier"><span class="legend-dot amber"></span><b>4&ndash;4.24 Amber</b> &mdash; Positive feedback but short of the excellence benchmark</div>
-                        <div class="legend-tier"><span class="legend-dot red"></span><b>&lt;4 Red</b> &mdash; Below 80% of scale; meaningful capability gaps</div>
+                        <div class="legend-tier"><span class="legend-dot green"></span><b>&ge;4.25</b> Green</div>
+                        <div class="legend-tier"><span class="legend-dot amber"></span><b>4&ndash;4.24</b> Amber</div>
+                        <div class="legend-tier"><span class="legend-dot red"></span><b>&lt;4</b> Red</div>
                     </div>
                 </div>
 
@@ -622,10 +620,9 @@
                         <div class="trend-item"><span class="trend-year">FY27</span><span class="trend-val" id="data-climate-trend-3">3.2</span></div>
                     </div>
                     <div class="metric-legend">
-                        <div class="metric-legend-label">Manager Climate Legend</div>
-                        <div class="legend-tier"><span class="legend-dot green"></span><b>&ge;75 Green</b> &mdash; Above Infeedo People Science healthy-effectiveness threshold</div>
-                        <div class="legend-tier"><span class="legend-dot amber"></span><b>65&ndash;74 Amber</b> &mdash; Opportunity to strengthen manager behaviours & engagement</div>
-                        <div class="legend-tier"><span class="legend-dot red"></span><b>&lt;65 Red</b> &mdash; Considerably below the People Science threshold of 75</div>
+                        <div class="legend-tier"><span class="legend-dot green"></span><b>&ge;75</b> Green</div>
+                        <div class="legend-tier"><span class="legend-dot amber"></span><b>65&ndash;74</b> Amber</div>
+                        <div class="legend-tier"><span class="legend-dot red"></span><b>&lt;65</b> Red</div>
                     </div>
                 </div>
 
@@ -644,10 +641,9 @@
                         <div class="trend-item"><span class="trend-year">2025</span><span class="trend-val" id="data-gptw-trend-3">85</span></div>
                     </div>
                     <div class="metric-legend">
-                        <div class="metric-legend-label">GPTW Manager Score Legend</div>
-                        <div class="legend-tier"><span class="legend-dot green"></span><b>&ge;90% Green</b> &mdash; Aligned to GPTW Top 100 Mid-Size org average (90%)</div>
-                        <div class="legend-tier"><span class="legend-dot amber"></span><b>75&ndash;89% Amber</b> &mdash; Below top-quartile but above the 75% risk threshold</div>
-                        <div class="legend-tier"><span class="legend-dot red"></span><b>&lt;75% Red</b> &mdash; Below the accepted high-trust workplace threshold</div>
+                        <div class="legend-tier"><span class="legend-dot green"></span><b>&ge;90%</b> Green</div>
+                        <div class="legend-tier"><span class="legend-dot amber"></span><b>75&ndash;89%</b> Amber</div>
+                        <div class="legend-tier"><span class="legend-dot red"></span><b>&lt;75%</b> Red</div>
                     </div>
                 </div>
             </div>
